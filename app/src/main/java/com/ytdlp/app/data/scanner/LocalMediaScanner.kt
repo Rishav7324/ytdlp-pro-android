@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 
 object LocalMediaScanner {
 
+    // Only scan songs greater than or equal to 60 seconds (1 minute)
+    private const val MIN_AUDIO_DURATION_MS = 60000L
+
     suspend fun scanLocalAudio(context: Context): List<DownloadEntity> = withContext(Dispatchers.IO) {
         val audioList = mutableListOf<DownloadEntity>()
         val projection = arrayOf(
@@ -23,7 +26,7 @@ object LocalMediaScanner {
             MediaStore.Audio.Media.ALBUM_ID
         )
 
-        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0 AND ${MediaStore.Audio.Media.DURATION} >= $MIN_AUDIO_DURATION_MS"
         val sortOrder = "${MediaStore.Audio.Media.DATE_ADDED} DESC"
 
         try {
@@ -50,6 +53,9 @@ object LocalMediaScanner {
                     val durationMs = c.getLong(durationCol)
                     val path = c.getString(dataCol) ?: ""
                     val albumId = c.getLong(albumIdCol)
+
+                    // Skip ringtones, short voice notes or clips less than 60s
+                    if (durationMs < MIN_AUDIO_DURATION_MS) continue
 
                     val artworkUri = ContentUris.withAppendedId(
                         Uri.parse("content://media/external/audio/albumart"),
@@ -90,13 +96,15 @@ object LocalMediaScanner {
             MediaStore.Video.Media.DATA
         )
 
+        // Filter videos longer than 10 seconds
+        val selection = "${MediaStore.Video.Media.DURATION} >= 10000"
         val sortOrder = "${MediaStore.Video.Media.DATE_ADDED} DESC"
 
         try {
             val cursor = context.contentResolver.query(
                 MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                 projection,
-                null,
+                selection,
                 null,
                 sortOrder
             )

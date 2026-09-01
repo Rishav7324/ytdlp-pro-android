@@ -3,17 +3,19 @@ package com.ytdlp.app.ui.player
 import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
+import android.content.pm.ActivityInfo
 import android.media.AudioManager
 import android.os.Build
 import android.util.Rational
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +37,8 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Fullscreen
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -42,6 +46,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
@@ -59,18 +64,19 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -79,6 +85,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -91,8 +100,8 @@ fun VideoPlayerView(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
-    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val activity = context as? Activity
+    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
     val playerManager = MediaPlayerManager.getInstance(context)
     val currentMedia by playerManager.currentMedia.collectAsState()
@@ -106,42 +115,80 @@ fun VideoPlayerView(
     var showControls by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
+    var isLandscape by remember { mutableStateOf(false) }
     var showSpeedMenu by remember { mutableStateOf(false) }
 
-    // Gesture Overlay States
+    // Gesture HUD States
     var volumeLevel by remember { mutableFloatStateOf(0.5f) }
     var brightnessLevel by remember { mutableFloatStateOf(0.5f) }
     var showVolumeOverlay by remember { mutableStateOf(false) }
     var showBrightnessOverlay by remember { mutableStateOf(false) }
     var doubleTapSeekText by remember { mutableStateOf<String?>(null) }
 
+    // Handle Landscape & Immersive Mode lifecycle
+    DisposableEffect(Unit) {
+        val window = activity?.window
+        if (window != null) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            if (window != null) {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
+    fun toggleOrientation() {
+        val targetOrientation = if (isLandscape) {
+            ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
+        activity?.requestedOrientation = targetOrientation
+        isLandscape = !isLandscape
+
+        val window = activity?.window
+        if (window != null) {
+            val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+            if (isLandscape) {
+                insetsController.hide(WindowInsetsCompat.Type.systemBars())
+                insetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            } else {
+                insetsController.show(WindowInsetsCompat.Type.systemBars())
+            }
+        }
+    }
+
     if (currentMedia == null) return
     val item = currentMedia ?: return
 
     LaunchedEffect(showControls, isPlaying) {
         if (showControls && isPlaying && !isLocked) {
-            delay(4000)
+            delay(4500)
             showControls = false
         }
     }
 
     LaunchedEffect(showVolumeOverlay) {
         if (showVolumeOverlay) {
-            delay(1500)
+            delay(1200)
             showVolumeOverlay = false
         }
     }
 
     LaunchedEffect(showBrightnessOverlay) {
         if (showBrightnessOverlay) {
-            delay(1500)
+            delay(1200)
             showBrightnessOverlay = false
         }
     }
 
     LaunchedEffect(doubleTapSeekText) {
         if (doubleTapSeekText != null) {
-            delay(1000)
+            delay(800)
             doubleTapSeekText = null
         }
     }
@@ -197,7 +244,7 @@ fun VideoPlayerView(
                     }
                 }
         ) {
-            // Android ExoPlayer View
+            // Android ExoPlayer Video Surface
             AndroidView(
                 factory = { ctx ->
                     PlayerView(ctx).apply {
@@ -216,39 +263,41 @@ fun VideoPlayerView(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Double Tap Seek Ripple Text HUD
+            // Double Tap HUD Overlay
             if (doubleTapSeekText != null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = if (doubleTapSeekText == "-10s") Alignment.CenterStart else Alignment.CenterEnd
                 ) {
-                    Card(
-                        modifier = Modifier.padding(horizontal = 48.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f))
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 48.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.7f))
+                            .padding(horizontal = 24.dp, vertical = 14.dp)
                     ) {
                         Text(
                             text = doubleTapSeekText ?: "",
                             color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp
                         )
                     }
                 }
             }
 
-            // Gesture Overlays
+            // Volume HUD
             if (showVolumeOverlay) {
-                Card(
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 36.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f))
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black.copy(alpha = 0.75f))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("${(volumeLevel * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.Bold)
@@ -256,16 +305,18 @@ fun VideoPlayerView(
                 }
             }
 
+            // Brightness HUD
             if (showBrightnessOverlay) {
-                Card(
-                    modifier = Modifier.align(Alignment.CenterStart).padding(start = 36.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f))
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Black.copy(alpha = 0.75f))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Default.BrightnessMedium, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.height(8.dp))
                         Text("${(brightnessLevel * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.Bold)
@@ -273,7 +324,7 @@ fun VideoPlayerView(
                 }
             }
 
-            // Lock Overlay
+            // Screen Lock Icon
             if (isLocked) {
                 AnimatedVisibility(
                     visible = showControls,
@@ -292,24 +343,46 @@ fun VideoPlayerView(
                     }
                 }
             } else {
-                // Controls Overlay
+                // Cinematic Controls Overlay with Scrim Gradients
                 AnimatedVisibility(
                     visible = showControls,
                     enter = fadeIn(),
                     exit = fadeOut(),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.55f))
-                    ) {
-                        // Top Bar
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Top Gradient Scrim
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(120.dp)
+                                .align(Alignment.TopCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black.copy(alpha = 0.85f), Color.Transparent)
+                                    )
+                                )
+                        )
+
+                        // Bottom Gradient Scrim
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.9f))
+                                    )
+                                )
+                        )
+
+                        // Top Bar Action Row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.TopCenter)
-                                .padding(16.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -317,7 +390,12 @@ fun VideoPlayerView(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                IconButton(onClick = onClose) {
+                                IconButton(
+                                    onClick = {
+                                        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                                        onClose()
+                                    }
+                                ) {
                                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -331,7 +409,7 @@ fun VideoPlayerView(
                                         overflow = TextOverflow.Ellipsis
                                     )
                                     Text(
-                                        text = item.uploader,
+                                        text = item.uploader.ifBlank { "yt-dlp Video" },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = Color.LightGray,
                                         maxLines = 1,
@@ -348,10 +426,10 @@ fun VideoPlayerView(
                                         playerManager.setAudioSheetOpen(true)
                                     }
                                 ) {
-                                    Icon(Icons.Default.Headphones, contentDescription = "Listen in Background", tint = Color.White)
+                                    Icon(Icons.Default.Headphones, contentDescription = "Background Audio", tint = Color.White)
                                 }
 
-                                // Picture-in-Picture (PiP)
+                                // Picture-in-Picture
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                     IconButton(
                                         onClick = {
@@ -365,11 +443,20 @@ fun VideoPlayerView(
                                             }
                                         }
                                     ) {
-                                        Icon(Icons.Default.PictureInPicture, contentDescription = "PiP Mode", tint = Color.White)
+                                        Icon(Icons.Default.PictureInPicture, contentDescription = "PiP", tint = Color.White)
                                     }
                                 }
 
-                                // Aspect Ratio switch
+                                // Rotation / Landscape Toggle
+                                IconButton(onClick = { toggleOrientation() }) {
+                                    Icon(
+                                        imageVector = if (isLandscape) Icons.Default.FullscreenExit else Icons.Default.ScreenRotation,
+                                        contentDescription = "Rotate Screen",
+                                        tint = Color.White
+                                    )
+                                }
+
+                                // Aspect Ratio
                                 IconButton(
                                     onClick = {
                                         resizeMode = when (resizeMode) {
@@ -382,7 +469,7 @@ fun VideoPlayerView(
                                     Icon(Icons.Default.AspectRatio, contentDescription = "Aspect Ratio", tint = Color.White)
                                 }
 
-                                // Playback Speed Menu
+                                // Speed Menu
                                 Box {
                                     IconButton(onClick = { showSpeedMenu = true }) {
                                         Icon(Icons.Default.Speed, contentDescription = "Speed", tint = Color.White)
@@ -403,9 +490,9 @@ fun VideoPlayerView(
                                     }
                                 }
 
-                                // Lock Button
+                                // Lock
                                 IconButton(onClick = { isLocked = true }) {
-                                    Icon(Icons.Default.LockOpen, contentDescription = "Lock Screen", tint = Color.White)
+                                    Icon(Icons.Default.LockOpen, contentDescription = "Lock", tint = Color.White)
                                 }
                             }
                         }
@@ -413,19 +500,25 @@ fun VideoPlayerView(
                         // Center Controls
                         Row(
                             modifier = Modifier.align(Alignment.Center),
-                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(28.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = { playerManager.playPrevious() }) {
-                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(36.dp))
+                            IconButton(
+                                onClick = { playerManager.playPrevious() },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                            ) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(28.dp))
                             }
 
                             IconButton(
                                 onClick = { playerManager.seekRewind(10000L) },
                                 modifier = Modifier
-                                    .size(54.dp)
+                                    .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.5f))
+                                    .background(Color.Black.copy(alpha = 0.4f))
                             ) {
                                 Icon(Icons.Default.FastRewind, contentDescription = "10s Back", tint = Color.White, modifier = Modifier.size(32.dp))
                             }
@@ -433,7 +526,7 @@ fun VideoPlayerView(
                             IconButton(
                                 onClick = { playerManager.togglePlayPause() },
                                 modifier = Modifier
-                                    .size(72.dp)
+                                    .size(76.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary)
                             ) {
@@ -441,31 +534,37 @@ fun VideoPlayerView(
                                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                     contentDescription = "Play/Pause",
                                     tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(40.dp)
+                                    modifier = Modifier.size(44.dp)
                                 )
                             }
 
                             IconButton(
                                 onClick = { playerManager.seekForward(10000L) },
                                 modifier = Modifier
-                                    .size(54.dp)
+                                    .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.5f))
+                                    .background(Color.Black.copy(alpha = 0.4f))
                             ) {
                                 Icon(Icons.Default.FastForward, contentDescription = "10s Forward", tint = Color.White, modifier = Modifier.size(32.dp))
                             }
 
-                            IconButton(onClick = { playerManager.playNext() }) {
-                                Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(36.dp))
+                            IconButton(
+                                onClick = { playerManager.playNext() },
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.4f))
+                            ) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(28.dp))
                             }
                         }
 
-                        // Bottom Timeline & A-B Loop Bar
+                        // Bottom Scrubber Bar
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.BottomCenter)
-                                .padding(16.dp)
+                                .padding(horizontal = 20.dp, vertical = 12.dp)
                         ) {
                             // A-B Loop Controls
                             Row(
@@ -476,13 +575,13 @@ fun VideoPlayerView(
                                 FilterChip(
                                     selected = loopPointA != null,
                                     onClick = { playerManager.setLoopPointA() },
-                                    label = { Text(if (loopPointA == null) "Set A" else "A: ${formatDuration(loopPointA!!)}", fontSize = 10.sp) },
+                                    label = { Text(if (loopPointA == null) "Set Loop A" else "A: ${formatDuration(loopPointA!!)}", fontSize = 10.sp) },
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 FilterChip(
                                     selected = loopPointB != null,
                                     onClick = { playerManager.setLoopPointB() },
-                                    label = { Text(if (loopPointB == null) "Set B" else "B: ${formatDuration(loopPointB!!)}", fontSize = 10.sp) },
+                                    label = { Text(if (loopPointB == null) "Set Loop B" else "B: ${formatDuration(loopPointB!!)}", fontSize = 10.sp) },
                                     shape = RoundedCornerShape(8.dp)
                                 )
                                 if (loopPointA != null || loopPointB != null) {
@@ -492,7 +591,7 @@ fun VideoPlayerView(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             val currentPosFloat = position.toFloat().coerceIn(0f, duration.toFloat().coerceAtLeast(1f))
                             Slider(
@@ -501,18 +600,47 @@ fun VideoPlayerView(
                                 valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
                                 colors = SliderDefaults.colors(
                                     thumbColor = MaterialTheme.colorScheme.primary,
-                                    activeTrackColor = MaterialTheme.colorScheme.primary
+                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             )
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(formatDuration(position), color = Color.White, style = MaterialTheme.typography.labelSmall)
-                                Text("${playbackSpeed}x", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                                Text(formatDuration(duration), color = Color.White, style = MaterialTheme.typography.labelSmall)
+                                Text(
+                                    text = "${formatDuration(position)} / ${formatDuration(duration)}",
+                                    color = Color.White,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${playbackSpeed}x Speed",
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    IconButton(
+                                        onClick = { toggleOrientation() },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Fullscreen,
+                                            contentDescription = "Fullscreen Landscape",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
