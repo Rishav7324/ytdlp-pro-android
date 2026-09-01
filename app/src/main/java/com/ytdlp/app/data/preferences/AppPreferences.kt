@@ -25,16 +25,16 @@ class AppPreferences(private val context: Context) {
         val KEY_EMBED_SUBTITLES = booleanPreferencesKey("embed_subtitles")
         val KEY_USE_ARIA2 = booleanPreferencesKey("use_aria2")
         val KEY_CONCURRENT_DOWNLOADS = intPreferencesKey("concurrent_downloads")
-        val KEY_DARK_THEME_MODE = stringPreferencesKey("dark_theme_mode") // SYSTEM, LIGHT, DARK, AMOLED
+        val KEY_DARK_THEME_MODE = stringPreferencesKey("dark_theme_mode")
         val KEY_CUSTOM_ARGUMENTS = stringPreferencesKey("custom_arguments")
         val KEY_COOKIES_CONTENT = stringPreferencesKey("cookies_content")
     }
 
     private val defaultDownloadDir: String
-        get() = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "yt-dlp"
-        ).absolutePath
+        get() {
+            val extDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            return extDir?.absolutePath ?: context.filesDir.absolutePath
+        }
 
     val downloadPath: Flow<String> = context.dataStore.data.map { prefs ->
         prefs[KEY_DOWNLOAD_PATH] ?: defaultDownloadDir
@@ -57,7 +57,7 @@ class AppPreferences(private val context: Context) {
     }
 
     val useAria2: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[KEY_USE_ARIA2] ?: true
+        prefs[KEY_USE_ARIA2] ?: false
     }
 
     val concurrentDownloads: Flow<Int> = context.dataStore.data.map { prefs ->

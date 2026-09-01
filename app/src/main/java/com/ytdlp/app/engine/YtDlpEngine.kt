@@ -227,20 +227,24 @@ object YtDlpEngine {
                 )
             }
 
-            if (!outputDir.exists()) {
-                outputDir.mkdirs()
+            val validDir = if (!outputDir.exists() && !outputDir.mkdirs()) {
+                context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
+            } else {
+                outputDir
             }
 
             val normalized = normalizeUrl(url)
             val request = YoutubeDLRequest(normalized)
-            request.addOption("-o", "${outputDir.absolutePath}/%(title)s.%(ext)s")
+            request.addOption("-o", "${validDir.absolutePath}/%(title)s.%(ext)s")
             request.addOption("--no-mtime")
             request.addOption("--restrict-filenames")
             request.addOption("--geo-bypass")
             request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
             request.addOption("--no-check-certificates")
+            request.addOption("--concurrent-fragments", "4")
 
             if (mediaType == MediaType.AUDIO) {
+                request.addOption("-f", "ba/b")
                 request.addOption("-x")
                 request.addOption("--audio-format", audioExtension)
                 request.addOption("--audio-quality", "0")
