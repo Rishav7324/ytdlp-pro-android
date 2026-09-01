@@ -5,6 +5,7 @@ import android.util.Log
 import com.yausername.aria2c.Aria2c
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLException
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoInfo as YtdlVideoInfo
 import com.ytdlp.app.data.local.MediaType
@@ -17,27 +18,47 @@ import java.io.File
 object YtDlpEngine {
     private const val TAG = "YtDlpEngine"
     private val initMutex = Mutex()
-    private var isInitialized = false
+    var isInitialized = false
+        private set
+    var lastInitError: String? = null
+        private set
 
-    suspend fun ensureInitialized(context: Context) = withContext(Dispatchers.IO) {
-        if (isInitialized) return@withContext
+    suspend fun ensureInitialized(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
+        if (isInitialized) return@withContext Result.success(Unit)
         initMutex.withLock {
-            if (!isInitialized) {
+            if (isInitialized) return@withContext Result.success(Unit)
+            try {
+                Log.d(TAG, "Initializing yt-dlp, FFmpeg, and Aria2c native libraries...")
+                val appContext = context.applicationContext
+
                 try {
-                    YoutubeDL.getInstance().init(context.applicationContext)
-                    FFmpeg.getInstance().init(context.applicationContext)
-                    Aria2c.getInstance().init(context.applicationContext)
-                    isInitialized = true
-                    Log.d(TAG, "yt-dlp, FFmpeg, and Aria2c initialized successfully")
+                    YoutubeDL.getInstance().init(appContext)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error initializing yt-dlp components", e)
-                    // If already initialized, mark true
-                    if (e.message?.contains("already", ignoreCase = true) == true) {
-                        isInitialized = true
-                    } else {
+                    if (e.message?.contains("already initialized", ignoreCase = true) != true) {
                         throw e
                     }
                 }
+
+                try {
+                    FFmpeg.getInstance().init(appContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "FFmpeg init notice: ${e.message}")
+                }
+
+                try {
+                    Aria2c.getInstance().init(appContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Aria2c init notice: ${e.message}")
+                }
+
+                isInitialized = true
+                lastInitError = null
+                Log.d(TAG, "All engine components successfully initialized")
+                Result.success(Unit)
+            } catch (e: Throwable) {
+                lastInitError = e.message ?: "Failed to extract native binaries"
+                Log.e(TAG, "Fatal engine initialization failure", e)
+                Result.failure(e)
             }
         }
     }
@@ -47,7 +68,6 @@ object YtDlpEngine {
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
             return trimmed
         }
-        // If it starts with a common domain
         if (trimmed.startsWith("youtube.com/") || trimmed.startsWith("www.youtube.com/") ||
             trimmed.startsWith("m.youtube.com/") || trimmed.startsWith("youtu.be/") ||
             trimmed.startsWith("instagram.com/") || trimmed.startsWith("tiktok.com/") ||
@@ -55,18 +75,22 @@ object YtDlpEngine {
             trimmed.startsWith("reddit.com/") || trimmed.startsWith("bilibili.com/")) {
             return "https://$trimmed"
         }
-        // If it looks like a YouTube video ID (e.g. 11 characters before query params)
         val cleanId = trimmed.split("?").firstOrNull() ?: trimmed
         if (cleanId.length == 11 && cleanId.matches(Regex("^[a-zA-Z0-9_-]{11}$"))) {
             return "https://www.youtube.com/watch?v=$trimmed"
         }
-        // Default to https://
         return "https://$trimmed"
     }
 
     suspend fun fetchVideoInfo(context: Context, url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized(context)
+            val initRes = ensureInitialized(context)
+            if (initRes.isFailure) {
+                return@withContext Result.failure(
+                    initRes.exceptionOrNull() ?: YoutubeDLException(lastInitError ?: "Failed to initialize engine")
+                )
+            }
+
             val normalized = normalizeUrl(url)
             val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(normalized)
             val formats = parseFormats(ydlInfo)
@@ -189,7 +213,13 @@ object YtDlpEngine {
         onProgress: (progress: Float, speed: String, eta: String, line: String) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
-            ensureInitialized(context)
+            val initRes = ensureInitialized(context)
+            if (initRes.isFailure) {
+                return@withContext Result.failure(
+                    initRes.exceptionOrNull() ?: YoutubeDLException(lastInitError ?: "Failed to initialize engine")
+                )
+            }
+
             if (!outputDir.exists()) {
                 outputDir.mkdirs()
             }

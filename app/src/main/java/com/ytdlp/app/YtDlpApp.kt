@@ -25,6 +25,9 @@ class YtDlpApp : Application() {
     private val _isEngineReady = MutableStateFlow(false)
     val isEngineReady: StateFlow<Boolean> = _isEngineReady.asStateFlow()
 
+    private val _initError = MutableStateFlow<String?>(null)
+    val initError: StateFlow<String?> = _initError.asStateFlow()
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -33,15 +36,24 @@ class YtDlpApp : Application() {
         preferences = AppPreferences(this)
         repository = DownloadRepository(database.downloadDao(), preferences)
 
-        // Initialize yt-dlp, FFmpeg, and Aria2c on startup
+        initEngine()
+    }
+
+    fun initEngine() {
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                YtDlpEngine.ensureInitialized(this@YtDlpApp)
-                _isEngineReady.value = true
-                Log.d("YtDlpApp", "Engine initialization completed successfully.")
-            } catch (e: Exception) {
-                Log.e("YtDlpApp", "Failed to initialize engine on startup", e)
-            }
+            val result = YtDlpEngine.ensureInitialized(this@YtDlpApp)
+            result.fold(
+                onSuccess = {
+                    _isEngineReady.value = true
+                    _initError.value = null
+                    Log.d("YtDlpApp", "Engine initialization completed successfully.")
+                },
+                onFailure = { err ->
+                    _isEngineReady.value = false
+                    _initError.value = err.message
+                    Log.e("YtDlpApp", "Engine initialization failed", err)
+                }
+            )
         }
     }
 

@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -38,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SuggestionChip
@@ -67,6 +70,7 @@ import com.ytdlp.app.ui.components.DownloadItemCard
 import com.ytdlp.app.ui.components.FormatSelectionSheet
 import com.ytdlp.app.ui.components.VideoPreviewCard
 import com.ytdlp.app.ui.theme.AccentGreen
+import com.ytdlp.app.ui.theme.AccentRed
 import com.ytdlp.app.ui.theme.PrimaryIndigo
 import com.ytdlp.app.ui.theme.SecondaryTeal
 import com.ytdlp.app.viewmodel.HomeUiState
@@ -85,6 +89,7 @@ fun HomeScreen(
     val urlInput by viewModel.urlInput.collectAsState()
     val recentDownloads by viewModel.recentDownloads.collectAsState(initial = emptyList())
     val isEngineReady by YtDlpApp.instance.isEngineReady.collectAsState()
+    val initError by YtDlpApp.instance.initError.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -179,6 +184,49 @@ fun HomeScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
+                            } else if (initError != null) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(AccentRed.copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = AccentRed,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Init Error",
+                                        color = AccentRed,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            } else {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(PrimaryIndigo.copy(alpha = 0.15f))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(12.dp),
+                                        strokeWidth = 2.dp,
+                                        color = PrimaryIndigo
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Initializing",
+                                        color = PrimaryIndigo,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
 
@@ -201,6 +249,29 @@ fun HomeScreen(
                                     shape = RoundedCornerShape(10.dp)
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            if (initError != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Text("Engine Loading Issue", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Text(initError ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { YtDlpApp.instance.initEngine() },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Retry Loading Engine")
                         }
                     }
                 }
