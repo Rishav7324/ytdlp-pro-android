@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -31,6 +32,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.ytdlp.app.player.MediaPlayerManager
+import com.ytdlp.app.ui.browser.WebBrowserScreen
 import com.ytdlp.app.ui.player.AudioPlayerSheet
 import com.ytdlp.app.ui.player.MiniPlayerBar
 import com.ytdlp.app.ui.player.VideoPlayerView
@@ -42,6 +44,7 @@ import com.ytdlp.app.viewmodel.HomeViewModel
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Home : Screen("home", "Home", Icons.Default.Home)
+    object Browser : Screen("browser", "Browser", Icons.Default.Language)
     object Queue : Screen("queue", "Queue", Icons.Default.Download)
     object Library : Screen("library", "Library", Icons.Default.LibraryMusic)
     object Settings : Screen("settings", "Settings", Icons.Default.Settings)
@@ -49,6 +52,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector)
 
 val navItems = listOf(
     Screen.Home,
+    Screen.Browser,
     Screen.Queue,
     Screen.Library,
     Screen.Settings
@@ -117,6 +121,15 @@ fun AppNavigation(
                         viewModel = homeViewModel,
                         onNavigateToQueue = {
                             navController.navigate(Screen.Queue.route)
+                        }
+                    )
+                }
+                composable(Screen.Browser.route) {
+                    WebBrowserScreen(
+                        onDownloadUrl = { url ->
+                            homeViewModel.onUrlChanged(url)
+                            homeViewModel.parseUrl(url)
+                            navController.navigate(Screen.Home.route)
                         }
                     )
                 }

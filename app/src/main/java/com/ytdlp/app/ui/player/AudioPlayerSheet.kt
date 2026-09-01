@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.MusicNote
@@ -40,6 +41,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.ytdlp.app.player.MediaPlayerManager
+import com.ytdlp.app.ui.components.equalizer.EqualizerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +74,8 @@ fun AudioPlayerSheet(
     val duration by playerManager.duration.collectAsState()
     val playbackSpeed by playerManager.playbackSpeed.collectAsState()
     val repeatMode by playerManager.repeatMode.collectAsState()
+
+    var showEqualizer by remember { mutableStateOf(false) }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -134,7 +141,7 @@ fun AudioPlayerSheet(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             // Title & Artist
             Text(
@@ -155,7 +162,7 @@ fun AudioPlayerSheet(
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Timeline Slider
             val currentPosFloat = position.toFloat().coerceIn(0f, duration.toFloat().coerceAtLeast(1f))
@@ -179,24 +186,31 @@ fun AudioPlayerSheet(
                 Text(formatDuration(duration), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // Playback Speed Selector Chips
+            // Playback Speed Selector Chips & Equalizer Button
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
-                    FilterChip(
-                        selected = playbackSpeed == speed,
-                        onClick = { playerManager.setSpeed(speed) },
-                        label = { Text("${speed}x", fontSize = 11.sp) },
-                        shape = RoundedCornerShape(8.dp)
-                    )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
+                        FilterChip(
+                            selected = playbackSpeed == speed,
+                            onClick = { playerManager.setSpeed(speed) },
+                            label = { Text("${speed}x", fontSize = 10.sp) },
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+                }
+
+                IconButton(onClick = { showEqualizer = true }) {
+                    Icon(Icons.Default.Equalizer, contentDescription = "Equalizer", tint = MaterialTheme.colorScheme.primary)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Player Main Controls
             Row(
@@ -256,7 +270,11 @@ fun AudioPlayerSheet(
                 Spacer(modifier = Modifier.width(36.dp))
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+
+        if (showEqualizer) {
+            EqualizerDialog(onDismiss = { showEqualizer = false })
         }
     }
 }
