@@ -9,12 +9,21 @@ android {
     namespace = "com.ytdlp.app"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = "ytdlppass"
+            keyAlias = "ytdlp"
+            keyPassword = "ytdlppass"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.ytdlp.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.0.6"
+        versionCode = 7
+        versionName = "1.0.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -29,13 +38,15 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
         debug {
-            applicationIdSuffix = ".debug"
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             isDebuggable = true
         }
     }
