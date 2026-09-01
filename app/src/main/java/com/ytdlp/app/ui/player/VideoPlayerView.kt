@@ -12,7 +12,6 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -26,8 +25,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +43,7 @@ import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
@@ -55,7 +57,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -116,7 +117,7 @@ fun VideoPlayerView(
     var isLocked by remember { mutableStateOf(false) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var isLandscape by remember { mutableStateOf(false) }
-    var showSpeedMenu by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
 
     // Gesture HUD States
     var volumeLevel by remember { mutableFloatStateOf(0.5f) }
@@ -125,7 +126,6 @@ fun VideoPlayerView(
     var showBrightnessOverlay by remember { mutableStateOf(false) }
     var doubleTapSeekText by remember { mutableStateOf<String?>(null) }
 
-    // Handle Landscape & Immersive Mode lifecycle
     DisposableEffect(Unit) {
         val window = activity?.window
         if (window != null) {
@@ -167,7 +167,7 @@ fun VideoPlayerView(
 
     LaunchedEffect(showControls, isPlaying) {
         if (showControls && isPlaying && !isLocked) {
-            delay(4500)
+            delay(4000)
             showControls = false
         }
     }
@@ -330,7 +330,10 @@ fun VideoPlayerView(
                     visible = showControls,
                     enter = fadeIn(),
                     exit = fadeOut(),
-                    modifier = Modifier.align(Alignment.TopStart).padding(20.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(16.dp)
                 ) {
                     IconButton(
                         onClick = { isLocked = false },
@@ -343,7 +346,7 @@ fun VideoPlayerView(
                     }
                 }
             } else {
-                // Cinematic Controls Overlay with Scrim Gradients
+                // Controls Overlay
                 AnimatedVisibility(
                     visible = showControls,
                     enter = fadeIn(),
@@ -355,7 +358,7 @@ fun VideoPlayerView(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(120.dp)
+                                .height(130.dp)
                                 .align(Alignment.TopCenter)
                                 .background(
                                     Brush.verticalGradient(
@@ -368,7 +371,7 @@ fun VideoPlayerView(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(140.dp)
+                                .height(160.dp)
                                 .align(Alignment.BottomCenter)
                                 .background(
                                     Brush.verticalGradient(
@@ -377,12 +380,13 @@ fun VideoPlayerView(
                                 )
                         )
 
-                        // Top Bar Action Row
+                        // Top Bar Action Row with statusBarsPadding()
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.TopCenter)
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .statusBarsPadding()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -398,7 +402,7 @@ fun VideoPlayerView(
                                 ) {
                                     Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Column {
                                     Text(
                                         text = item.title,
@@ -447,15 +451,6 @@ fun VideoPlayerView(
                                     }
                                 }
 
-                                // Rotation / Landscape Toggle
-                                IconButton(onClick = { toggleOrientation() }) {
-                                    Icon(
-                                        imageVector = if (isLandscape) Icons.Default.FullscreenExit else Icons.Default.ScreenRotation,
-                                        contentDescription = "Rotate Screen",
-                                        tint = Color.White
-                                    )
-                                }
-
                                 // Aspect Ratio
                                 IconButton(
                                     onClick = {
@@ -469,35 +464,64 @@ fun VideoPlayerView(
                                     Icon(Icons.Default.AspectRatio, contentDescription = "Aspect Ratio", tint = Color.White)
                                 }
 
-                                // Speed Menu
+                                // More Options Menu (Speed, A-B loop, Lock)
                                 Box {
-                                    IconButton(onClick = { showSpeedMenu = true }) {
-                                        Icon(Icons.Default.Speed, contentDescription = "Speed", tint = Color.White)
+                                    IconButton(onClick = { showMoreMenu = true }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "More", tint = Color.White)
                                     }
                                     DropdownMenu(
-                                        expanded = showSpeedMenu,
-                                        onDismissRequest = { showSpeedMenu = false }
+                                        expanded = showMoreMenu,
+                                        onDismissRequest = { showMoreMenu = false }
                                     ) {
-                                        listOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 2.5f, 3.0f).forEach { sp ->
+                                        DropdownMenuItem(
+                                            text = { Text("Speed: ${playbackSpeed}x") },
+                                            onClick = {
+                                                val nextSpeed = when (playbackSpeed) {
+                                                    1.0f -> 1.25f
+                                                    1.25f -> 1.5f
+                                                    1.5f -> 2.0f
+                                                    2.0f -> 0.75f
+                                                    else -> 1.0f
+                                                }
+                                                playerManager.setSpeed(nextSpeed)
+                                                showMoreMenu = false
+                                            }
+                                        )
+                                        DropdownMenuItem(
+                                            text = { Text(if (loopPointA == null) "Set Loop Start [A]" else "Set Loop End [B]") },
+                                            onClick = {
+                                                if (loopPointA == null) {
+                                                    playerManager.setLoopPointA()
+                                                } else if (loopPointB == null) {
+                                                    playerManager.setLoopPointB()
+                                                } else {
+                                                    playerManager.clearAbLoop()
+                                                }
+                                                showMoreMenu = false
+                                            }
+                                        )
+                                        if (loopPointA != null || loopPointB != null) {
                                             DropdownMenuItem(
-                                                text = { Text("${sp}x") },
+                                                text = { Text("Clear A-B Loop") },
                                                 onClick = {
-                                                    playerManager.setSpeed(sp)
-                                                    showSpeedMenu = false
+                                                    playerManager.clearAbLoop()
+                                                    showMoreMenu = false
                                                 }
                                             )
                                         }
+                                        DropdownMenuItem(
+                                            text = { Text("Lock Screen Controls") },
+                                            onClick = {
+                                                isLocked = true
+                                                showMoreMenu = false
+                                            }
+                                        )
                                     }
-                                }
-
-                                // Lock
-                                IconButton(onClick = { isLocked = true }) {
-                                    Icon(Icons.Default.LockOpen, contentDescription = "Lock", tint = Color.White)
                                 }
                             }
                         }
 
-                        // Center Controls
+                        // Center Playback Controls
                         Row(
                             modifier = Modifier.align(Alignment.Center),
                             horizontalArrangement = Arrangement.spacedBy(28.dp),
@@ -526,7 +550,7 @@ fun VideoPlayerView(
                             IconButton(
                                 onClick = { playerManager.togglePlayPause() },
                                 modifier = Modifier
-                                    .size(76.dp)
+                                    .size(72.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary)
                             ) {
@@ -534,7 +558,7 @@ fun VideoPlayerView(
                                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                     contentDescription = "Play/Pause",
                                     tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(44.dp)
+                                    modifier = Modifier.size(40.dp)
                                 )
                             }
 
@@ -559,40 +583,14 @@ fun VideoPlayerView(
                             }
                         }
 
-                        // Bottom Scrubber Bar
+                        // Bottom Scrubber Bar with navigationBarsPadding()
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.BottomCenter)
+                                .navigationBarsPadding()
                                 .padding(horizontal = 20.dp, vertical = 12.dp)
                         ) {
-                            // A-B Loop Controls
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                FilterChip(
-                                    selected = loopPointA != null,
-                                    onClick = { playerManager.setLoopPointA() },
-                                    label = { Text(if (loopPointA == null) "Set Loop A" else "A: ${formatDuration(loopPointA!!)}", fontSize = 10.sp) },
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                FilterChip(
-                                    selected = loopPointB != null,
-                                    onClick = { playerManager.setLoopPointB() },
-                                    label = { Text(if (loopPointB == null) "Set Loop B" else "B: ${formatDuration(loopPointB!!)}", fontSize = 10.sp) },
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                if (loopPointA != null || loopPointB != null) {
-                                    IconButton(onClick = { playerManager.clearAbLoop() }, modifier = Modifier.size(30.dp)) {
-                                        Icon(Icons.Default.Repeat, contentDescription = "Clear A-B Loop", tint = Color.White, modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(4.dp))
-
                             val currentPosFloat = position.toFloat().coerceIn(0f, duration.toFloat().coerceAtLeast(1f))
                             Slider(
                                 value = currentPosFloat,
@@ -601,7 +599,7 @@ fun VideoPlayerView(
                                 colors = SliderDefaults.colors(
                                     thumbColor = MaterialTheme.colorScheme.primary,
                                     activeTrackColor = MaterialTheme.colorScheme.primary,
-                                    inactiveTrackColor = Color.White.copy(alpha = 0.3f)
+                                    inactiveTrackColor = Color.White.copy(alpha = 0.35f)
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             )
@@ -623,7 +621,7 @@ fun VideoPlayerView(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "${playbackSpeed}x Speed",
+                                        text = "${playbackSpeed}x",
                                         color = MaterialTheme.colorScheme.primary,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
@@ -631,13 +629,13 @@ fun VideoPlayerView(
 
                                     IconButton(
                                         onClick = { toggleOrientation() },
-                                        modifier = Modifier.size(28.dp)
+                                        modifier = Modifier.size(32.dp)
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Fullscreen,
-                                            contentDescription = "Fullscreen Landscape",
+                                            imageVector = if (isLandscape) Icons.Default.FullscreenExit else Icons.Default.Fullscreen,
+                                            contentDescription = "Landscape Toggle",
                                             tint = Color.White,
-                                            modifier = Modifier.size(20.dp)
+                                            modifier = Modifier.size(24.dp)
                                         )
                                     }
                                 }
