@@ -3,7 +3,13 @@ package com.ytdlp.app.ui.screens
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,12 +30,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -37,6 +50,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +62,7 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +73,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -66,14 +82,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ytdlp.app.YtDlpApp
+import com.ytdlp.app.data.local.MediaType
 import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.DownloadItemCard
 import com.ytdlp.app.ui.components.FormatSelectionSheet
 import com.ytdlp.app.ui.components.VideoPreviewCard
+import com.ytdlp.app.ui.theme.AccentCyan
 import com.ytdlp.app.ui.theme.AccentGreen
+import com.ytdlp.app.ui.theme.AccentOrange
+import com.ytdlp.app.ui.theme.AccentPink
 import com.ytdlp.app.ui.theme.AccentRed
+import com.ytdlp.app.ui.theme.BilibiliBlue
+import com.ytdlp.app.ui.theme.InstagramPink
 import com.ytdlp.app.ui.theme.PrimaryIndigo
+import com.ytdlp.app.ui.theme.RedditOrange
 import com.ytdlp.app.ui.theme.SecondaryTeal
+import com.ytdlp.app.ui.theme.SoundCloudOrange
+import com.ytdlp.app.ui.theme.TikTokCyan
+import com.ytdlp.app.ui.theme.TwitchPurple
+import com.ytdlp.app.ui.theme.TwitterBlue
+import com.ytdlp.app.ui.theme.YouTubeRed
 import com.ytdlp.app.viewmodel.HomeUiState
 import com.ytdlp.app.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
@@ -82,7 +110,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = viewModel(),
-    onNavigateToQueue: () -> Unit = {}
+    onNavigateToQueue: () -> Unit = {},
+    onNavigateToBrowser: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val playerManager = MediaPlayerManager.getInstance(context)
@@ -97,7 +126,29 @@ fun HomeScreen(
     var showBottomSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val platformTags = listOf("YouTube", "Instagram", "TikTok", "X / Twitter", "Reddit", "Twitch", "Bilibili", "SoundCloud")
+    var clipboardDetectedUrl by remember { mutableStateOf<String?>(null) }
+
+    // Clipboard Auto-Detect
+    LaunchedEffect(Unit) {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        if (clipboard.hasPrimaryClip() && clipboard.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) == true) {
+            val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.trim() ?: ""
+            if ((text.startsWith("http://") || text.startsWith("https://") || text.contains("youtu") || text.contains("instagram") || text.contains("tiktok") || text.contains("twitter") || text.contains("reddit")) && text != urlInput) {
+                clipboardDetectedUrl = text
+            }
+        }
+    }
+
+    val platforms = listOf(
+        Triple("YouTube", YouTubeRed, "https://m.youtube.com"),
+        Triple("Instagram", InstagramPink, "https://www.instagram.com"),
+        Triple("TikTok", TikTokCyan, "https://www.tiktok.com"),
+        Triple("X / Twitter", TwitterBlue, "https://x.com"),
+        Triple("Reddit", RedditOrange, "https://www.reddit.com"),
+        Triple("SoundCloud", SoundCloudOrange, "https://m.soundcloud.com"),
+        Triple("Twitch", TwitchPurple, "https://m.twitch.tv"),
+        Triple("Bilibili", BilibiliBlue, "https://m.bilibili.com")
+    )
 
     LazyColumn(
         modifier = Modifier
@@ -106,12 +157,12 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp))
 
-            // Hero Banner Card with Gradient
+            // Glassmorphic Hero Banner Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(26.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 Box(
@@ -120,8 +171,9 @@ fun HomeScreen(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    PrimaryIndigo.copy(alpha = 0.15f),
-                                    SecondaryTeal.copy(alpha = 0.15f)
+                                    PrimaryIndigo.copy(alpha = 0.2f),
+                                    SecondaryTeal.copy(alpha = 0.15f),
+                                    AccentPink.copy(alpha = 0.1f)
                                 )
                             )
                         )
@@ -136,19 +188,23 @@ fun HomeScreen(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(42.dp)
                                         .clip(CircleShape)
-                                        .background(PrimaryIndigo),
+                                        .background(
+                                            Brush.linearGradient(
+                                                listOf(PrimaryIndigo, SecondaryTeal)
+                                            )
+                                        ),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.ElectricBolt,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimary,
-                                        modifier = Modifier.size(20.dp)
+                                        tint = Color.White,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
+                                Spacer(modifier = Modifier.width(12.dp))
                                 Column {
                                     Text(
                                         text = "yt-dlp Pro",
@@ -157,9 +213,10 @@ fun HomeScreen(
                                         color = MaterialTheme.colorScheme.onBackground
                                     )
                                     Text(
-                                        text = "Universal 4K & Audio Downloader",
+                                        text = "4K HDR & Studio Audio Suite",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
@@ -170,17 +227,17 @@ fun HomeScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
                                         .background(AccentGreen.copy(alpha = 0.15f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.CheckCircle,
                                         contentDescription = null,
                                         tint = AccentGreen,
-                                        modifier = Modifier.size(12.dp)
+                                        modifier = Modifier.size(14.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Ready",
+                                        text = "Engine Ready",
                                         color = AccentGreen,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
@@ -192,17 +249,17 @@ fun HomeScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
                                         .background(AccentRed.copy(alpha = 0.15f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Warning,
                                         contentDescription = null,
                                         tint = AccentRed,
-                                        modifier = Modifier.size(12.dp)
+                                        modifier = Modifier.size(14.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Init Error",
+                                        text = "Init Issue",
                                         color = AccentRed,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold
@@ -214,7 +271,7 @@ fun HomeScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(20.dp))
                                         .background(PrimaryIndigo.copy(alpha = 0.15f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
                                 ) {
                                     CircularProgressIndicator(
                                         modifier = Modifier.size(12.dp),
@@ -232,54 +289,80 @@ fun HomeScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        // Supported Platform Badges Scroll
+                        // Stats Telemetry Row
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            platformTags.forEach { tag ->
-                                SuggestionChip(
-                                    onClick = {},
-                                    label = { Text(tag, fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                                    colors = SuggestionChipDefaults.suggestionChipColors(
-                                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
-                                    ),
-                                    shape = RoundedCornerShape(10.dp)
-                                )
+                            Column {
+                                Text("Downloads", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                Text("${recentDownloads.size} Items", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                            }
+                            Column {
+                                Text("Turbo Engine", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                Text("Aria2 + Native", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                            }
+                            Column {
+                                Text("Max Resolution", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                                Text("4K UHD / 60fps", fontWeight = FontWeight.Bold, color = AccentOrange, style = MaterialTheme.typography.titleMedium)
                             }
                         }
                     }
                 }
             }
 
-            if (initError != null) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // Clipboard Auto-Detect Notification
+            AnimatedVisibility(
+                visible = clipboardDetectedUrl != null,
+                enter = fadeIn() + slideInVertically(),
+                exit = fadeOut() + slideOutVertically()
+            ) {
+                Spacer(modifier = Modifier.height(10.dp))
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            clipboardDetectedUrl?.let {
+                                viewModel.onUrlChanged(it)
+                                viewModel.parseUrl(it)
+                                clipboardDetectedUrl = null
+                            }
+                        },
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                 ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text("Engine Loading Issue", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                        Text(initError ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
-                            onClick = { YtDlpApp.instance.initEngine() },
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text("Link Found in Clipboard", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelLarge)
+                                Text("Tap to analyze & download instantly", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                            }
+                        }
+                        Button(
+                            onClick = {
+                                clipboardDetectedUrl?.let {
+                                    viewModel.onUrlChanged(it)
+                                    viewModel.parseUrl(it)
+                                    clipboardDetectedUrl = null
+                                }
+                            },
                             shape = RoundedCornerShape(10.dp)
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Retry Loading Engine")
+                            Text("Paste & Go", fontSize = 12.sp)
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // URL Search Box with Glassy Border
             OutlinedTextField(
@@ -287,7 +370,7 @@ fun HomeScreen(
                 onValueChange = { viewModel.onUrlChanged(it) },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                placeholder = { Text("Paste video, playlist, or audio link...") },
+                placeholder = { Text("Paste video, playlist, or music link...") },
                 leadingIcon = {
                     Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 },
@@ -327,18 +410,72 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Button(
-                onClick = {
-                    keyboardController?.hide()
-                    viewModel.parseUrl()
-                },
-                modifier = Modifier.fillMaxWidth().height(50.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            // Action Buttons (Analyze & In-App Browser)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Search, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Analyze & Extract Media", fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = {
+                        keyboardController?.hide()
+                        viewModel.parseUrl()
+                    },
+                    modifier = Modifier.weight(1f).height(52.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Icon(Icons.Default.Bolt, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Extract Media", fontWeight = FontWeight.Bold)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        onNavigateToBrowser(urlInput.ifBlank { "https://m.youtube.com" })
+                    },
+                    modifier = Modifier.height(52.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(Icons.Default.Language, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Open Browser")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Platform Hub Grid Cards
+            Text("Supported Platforms", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                platforms.forEach { (name, color, siteUrl) ->
+                    Card(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable { onNavigateToBrowser(siteUrl) },
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
             }
         }
 
@@ -348,18 +485,18 @@ fun HomeScreen(
                 is HomeUiState.Loading -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(22.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     ) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(150.dp),
+                            modifier = Modifier.fillMaxWidth().height(160.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator()
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
                                 Text("Connecting to yt-dlp extractor...", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-                                Text("Parsing streams, qualities, and metadata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                Text("Parsing streams, formats, 4K/1080p qualities, and metadata", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                             }
                         }
                     }
@@ -373,11 +510,11 @@ fun HomeScreen(
                 is HomeUiState.Error -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Extraction Failed", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                            Text("Extraction Notice", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
                         }
@@ -389,7 +526,7 @@ fun HomeScreen(
             }
         }
 
-        // Recent Downloads Section
+        // Recent Activity Section
         if (recentDownloads.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))

@@ -121,6 +121,9 @@ fun AppNavigation(
                         viewModel = homeViewModel,
                         onNavigateToQueue = {
                             navController.navigate(Screen.Queue.route)
+                        },
+                        onNavigateToBrowser = { url ->
+                            navController.navigate(Screen.Browser.route)
                         }
                     )
                 }
