@@ -18,14 +18,24 @@ object YtDlpEngine {
             val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(url)
             val formats = parseFormats(ydlInfo)
 
+            val durationVal: Long = when (val d = ydlInfo.duration) {
+                is Number -> d.toLong()
+                else -> 0L
+            }
+
+            val viewCountVal: Long = when (val v = ydlInfo.viewCount) {
+                is Number -> v.toLong()
+                else -> 0L
+            }
+
             val videoInfo = VideoInfo(
                 url = url,
                 id = ydlInfo.id ?: System.currentTimeMillis().toString(),
                 title = ydlInfo.title ?: "Unknown Title",
                 uploader = ydlInfo.uploader ?: ydlInfo.extractor ?: "Unknown Creator",
                 thumbnailUrl = ydlInfo.thumbnail ?: "",
-                durationSeconds = ydlInfo.duration.toLong(),
-                viewCount = ydlInfo.viewCount ?: 0L,
+                durationSeconds = durationVal,
+                viewCount = viewCountVal,
                 description = ydlInfo.description ?: "",
                 extractor = ydlInfo.extractor ?: "",
                 formats = formats
