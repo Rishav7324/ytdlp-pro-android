@@ -29,6 +29,9 @@ class MediaPlayerManager private constructor(context: Context) {
     private val _currentMedia = MutableStateFlow<DownloadEntity?>(null)
     val currentMedia: StateFlow<DownloadEntity?> = _currentMedia.asStateFlow()
 
+    private val _queue = MutableStateFlow<List<DownloadEntity>>(emptyList())
+    val queue: StateFlow<List<DownloadEntity>> = _queue.asStateFlow()
+
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
@@ -43,6 +46,9 @@ class MediaPlayerManager private constructor(context: Context) {
 
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
+
+    private val _isShuffleEnabled = MutableStateFlow(false)
+    val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
 
     private val _isVideoExpanded = MutableStateFlow(false)
     val isVideoExpanded: StateFlow<Boolean> = _isVideoExpanded.asStateFlow()
@@ -63,6 +69,8 @@ class MediaPlayerManager private constructor(context: Context) {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) {
                     _duration.value = player.duration.coerceAtLeast(0L)
+                } else if (state == Player.STATE_ENDED) {
+                    playNext()
                 }
             }
 
@@ -87,12 +95,26 @@ class MediaPlayerManager private constructor(context: Context) {
         progressJob?.cancel()
     }
 
-    fun playMedia(entity: DownloadEntity, openFullscreenIfVideo: Boolean = true) {
+    fun playMedia(entity: DownloadEntity, playlist: List<DownloadEntity> = emptyList(), openFullscreenIfVideo: Boolean = true) {
         val file = File(entity.targetPath)
-        if (!file.exists()) return
+        val uri = if (entity.targetPath.startsWith("content://")) {
+            Uri.parse(entity.targetPath)
+        } else if (file.exists()) {
+            Uri.fromFile(file)
+        } else if (entity.url.startsWith("http://") || entity.url.startsWith("https://")) {
+            Uri.parse(entity.url)
+        } else {
+            return
+        }
 
         _currentMedia.value = entity
-        val mediaItem = MediaItem.fromUri(Uri.fromFile(file))
+        if (playlist.isNotEmpty()) {
+            _queue.value = playlist
+        } else if (!_queue.value.contains(entity)) {
+            _queue.value = listOf(entity) + _queue.value
+        }
+
+        val mediaItem = MediaItem.fromUri(uri)
         player.setMediaItem(mediaItem)
         player.prepare()
         player.playWhenReady = true
@@ -105,6 +127,35 @@ class MediaPlayerManager private constructor(context: Context) {
             }
         } else {
             _isAudioSheetOpen.value = true
+        }
+    }
+
+    fun playNext() {
+        val q = _queue.value
+        val current = _currentMedia.value ?: return
+        val idx = q.indexOfFirst { it.id == current.id }
+        if (idx != -1 && idx + 1 < q.size) {
+            playMedia(q[idx + 1], q, openFullscreenIfVideo = false)
+        } else if (_repeatMode.value == Player.REPEAT_MODE_ALL && q.isNotEmpty()) {
+            playMedia(q[0], q, openFullscreenIfVideo = false)
+        }
+    }
+
+    fun playPrevious() {
+        val q = _queue.value
+        val current = _currentMedia.value ?: return
+        val idx = q.indexOfFirst { it.id == current.id }
+        if (idx > 0) {
+            playMedia(q[idx - 1], q, openFullscreenIfVideo = false)
+        } else {
+            seekTo(0L)
+        }
+    }
+
+    fun toggleShuffle() {
+        _isShuffleEnabled.value = !_isShuffleEnabled.value
+        if (_isShuffleEnabled.value) {
+            _queue.value = _queue.value.shuffled()
         }
     }
 

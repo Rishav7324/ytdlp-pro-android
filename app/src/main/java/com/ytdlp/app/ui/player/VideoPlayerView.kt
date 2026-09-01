@@ -1,13 +1,19 @@
 package com.ytdlp.app.ui.player
 
+import android.app.Activity
+import android.content.Context
+import android.media.AudioManager
+import android.provider.Settings
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,13 +30,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -44,6 +56,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +65,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +84,9 @@ fun VideoPlayerView(
     onClose: () -> Unit
 ) {
     val context = LocalContext.current
+    val audioManager = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val activity = context as? Activity
+
     val playerManager = MediaPlayerManager.getInstance(context)
     val currentMedia by playerManager.currentMedia.collectAsState()
     val isPlaying by playerManager.isPlaying.collectAsState()
@@ -82,6 +99,12 @@ fun VideoPlayerView(
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var showSpeedMenu by remember { mutableStateOf(false) }
 
+    // Gesture Overlay States (Animeko-style)
+    var volumeLevel by remember { mutableFloatStateOf(0.5f) }
+    var brightnessLevel by remember { mutableFloatStateOf(0.5f) }
+    var showVolumeOverlay by remember { mutableStateOf(false) }
+    var showBrightnessOverlay by remember { mutableStateOf(false) }
+
     if (currentMedia == null) return
     val item = currentMedia ?: return
 
@@ -93,6 +116,20 @@ fun VideoPlayerView(
         }
     }
 
+    LaunchedEffect(showVolumeOverlay) {
+        if (showVolumeOverlay) {
+            delay(1500)
+            showVolumeOverlay = false
+        }
+    }
+
+    LaunchedEffect(showBrightnessOverlay) {
+        if (showBrightnessOverlay) {
+            delay(1500)
+            showBrightnessOverlay = false
+        }
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.Black
@@ -100,11 +137,48 @@ fun VideoPlayerView(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    showControls = !showControls
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onDoubleTap = { offset ->
+                            if (!isLocked) {
+                                if (offset.x < size.width / 2) {
+                                    playerManager.seekRewind(10000L)
+                                } else {
+                                    playerManager.seekForward(10000L)
+                                }
+                            }
+                        },
+                        onTap = {
+                            showControls = !showControls
+                        }
+                    )
+                }
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures { change, dragAmount ->
+                        if (!isLocked) {
+                            val isLeftSide = change.position.x < size.width / 2
+                            if (isLeftSide) {
+                                // Brightness Gesture
+                                val delta = -dragAmount / 400f
+                                brightnessLevel = (brightnessLevel + delta).coerceIn(0.01f, 1.0f)
+                                activity?.window?.let { win ->
+                                    val lp = win.attributes
+                                    lp.screenBrightness = brightnessLevel
+                                    win.attributes = lp
+                                }
+                                showBrightnessOverlay = true
+                            } else {
+                                // Volume Gesture
+                                val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                                val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                                val deltaVol = if (dragAmount < 0) 1 else if (dragAmount > 0) -1 else 0
+                                val newVol = (currentVol + deltaVol).coerceIn(0, maxVol)
+                                audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, newVol, 0)
+                                volumeLevel = newVol.toFloat() / maxVol.toFloat()
+                                showVolumeOverlay = true
+                            }
+                        }
+                    }
                 }
         ) {
             // Android ExoPlayer View
@@ -125,6 +199,41 @@ fun VideoPlayerView(
                 },
                 modifier = Modifier.fillMaxSize()
             )
+
+            // Gesture Overlays (Volume / Brightness)
+            if (showVolumeOverlay) {
+                Card(
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 36.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.VolumeUp, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("${(volumeLevel * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            if (showBrightnessOverlay) {
+                Card(
+                    modifier = Modifier.align(Alignment.CenterStart).padding(start = 36.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(Icons.Default.BrightnessMedium, contentDescription = null, tint = Color.White)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("${(brightnessLevel * 100).toInt()}%", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
 
             // Lock Overlay Icon
             if (isLocked) {
@@ -235,12 +344,16 @@ fun VideoPlayerView(
                             }
                         }
 
-                        // Center Controls (10s Back, Play/Pause, 10s Forward)
+                        // Center Controls (Prev, 10s Back, Play/Pause, 10s Forward, Next)
                         Row(
                             modifier = Modifier.align(Alignment.Center),
-                            horizontalArrangement = Arrangement.spacedBy(36.dp),
+                            horizontalArrangement = Arrangement.spacedBy(24.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(onClick = { playerManager.playPrevious() }) {
+                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", tint = Color.White, modifier = Modifier.size(36.dp))
+                            }
+
                             IconButton(
                                 onClick = { playerManager.seekRewind(10000L) },
                                 modifier = Modifier
@@ -274,6 +387,10 @@ fun VideoPlayerView(
                                     .background(Color.Black.copy(alpha = 0.5f))
                             ) {
                                 Icon(Icons.Default.FastForward, contentDescription = "10s Forward", tint = Color.White, modifier = Modifier.size(32.dp))
+                            }
+
+                            IconButton(onClick = { playerManager.playNext() }) {
+                                Icon(Icons.Default.SkipNext, contentDescription = "Next", tint = Color.White, modifier = Modifier.size(36.dp))
                             }
                         }
 
