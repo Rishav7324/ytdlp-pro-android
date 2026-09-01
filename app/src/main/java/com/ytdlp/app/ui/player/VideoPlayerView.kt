@@ -1,20 +1,21 @@
 package com.ytdlp.app.ui.player
 
 import android.app.Activity
+import android.app.PictureInPictureParams
 import android.content.Context
 import android.media.AudioManager
-import android.provider.Settings
+import android.os.Build
+import android.util.Rational
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,10 +35,13 @@ import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Speed
@@ -46,6 +50,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +64,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -94,22 +100,24 @@ fun VideoPlayerView(
     val position by playerManager.currentPosition.collectAsState()
     val duration by playerManager.duration.collectAsState()
     val playbackSpeed by playerManager.playbackSpeed.collectAsState()
+    val loopPointA by playerManager.loopPointA.collectAsState()
+    val loopPointB by playerManager.loopPointB.collectAsState()
 
     var showControls by remember { mutableStateOf(true) }
     var isLocked by remember { mutableStateOf(false) }
     var resizeMode by remember { mutableIntStateOf(AspectRatioFrameLayout.RESIZE_MODE_FIT) }
     var showSpeedMenu by remember { mutableStateOf(false) }
 
-    // Gesture Overlay States (Animeko-style)
+    // Gesture Overlay States
     var volumeLevel by remember { mutableFloatStateOf(0.5f) }
     var brightnessLevel by remember { mutableFloatStateOf(0.5f) }
     var showVolumeOverlay by remember { mutableStateOf(false) }
     var showBrightnessOverlay by remember { mutableStateOf(false) }
+    var doubleTapSeekText by remember { mutableStateOf<String?>(null) }
 
     if (currentMedia == null) return
     val item = currentMedia ?: return
 
-    // Auto-hide controls after 4 seconds
     LaunchedEffect(showControls, isPlaying) {
         if (showControls && isPlaying && !isLocked) {
             delay(4000)
@@ -131,6 +139,13 @@ fun VideoPlayerView(
         }
     }
 
+    LaunchedEffect(doubleTapSeekText) {
+        if (doubleTapSeekText != null) {
+            delay(1000)
+            doubleTapSeekText = null
+        }
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = Color.Black
@@ -144,8 +159,10 @@ fun VideoPlayerView(
                             if (!isLocked) {
                                 if (offset.x < size.width / 2) {
                                     playerManager.seekRewind(10000L)
+                                    doubleTapSeekText = "-10s"
                                 } else {
                                     playerManager.seekForward(10000L)
+                                    doubleTapSeekText = "+10s"
                                 }
                             }
                         },
@@ -159,7 +176,6 @@ fun VideoPlayerView(
                         if (!isLocked) {
                             val isLeftSide = change.position.x < size.width / 2
                             if (isLeftSide) {
-                                // Brightness Gesture
                                 val delta = -dragAmount / 400f
                                 brightnessLevel = (brightnessLevel + delta).coerceIn(0.01f, 1.0f)
                                 activity?.window?.let { win ->
@@ -169,7 +185,6 @@ fun VideoPlayerView(
                                 }
                                 showBrightnessOverlay = true
                             } else {
-                                // Volume Gesture
                                 val maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
                                 val currentVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
                                 val deltaVol = if (dragAmount < 0) 1 else if (dragAmount > 0) -1 else 0
@@ -201,7 +216,29 @@ fun VideoPlayerView(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Gesture Overlays (Volume / Brightness)
+            // Double Tap Seek Ripple Text HUD
+            if (doubleTapSeekText != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = if (doubleTapSeekText == "-10s") Alignment.CenterStart else Alignment.CenterEnd
+                ) {
+                    Card(
+                        modifier = Modifier.padding(horizontal = 48.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.7f))
+                    ) {
+                        Text(
+                            text = doubleTapSeekText ?: "",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+                        )
+                    }
+                }
+            }
+
+            // Gesture Overlays
             if (showVolumeOverlay) {
                 Card(
                     modifier = Modifier.align(Alignment.CenterEnd).padding(end = 36.dp),
@@ -236,7 +273,7 @@ fun VideoPlayerView(
                 }
             }
 
-            // Lock Overlay Icon
+            // Lock Overlay
             if (isLocked) {
                 AnimatedVisibility(
                     visible = showControls,
@@ -265,7 +302,7 @@ fun VideoPlayerView(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f))
+                            .background(Color.Black.copy(alpha = 0.55f))
                     ) {
                         // Top Bar
                         Row(
@@ -304,7 +341,35 @@ fun VideoPlayerView(
                             }
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                // Aspect ratio switch
+                                // Background Audio Mode
+                                IconButton(
+                                    onClick = {
+                                        playerManager.setVideoExpanded(false)
+                                        playerManager.setAudioSheetOpen(true)
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Headphones, contentDescription = "Listen in Background", tint = Color.White)
+                                }
+
+                                // Picture-in-Picture (PiP)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                    IconButton(
+                                        onClick = {
+                                            try {
+                                                val params = PictureInPictureParams.Builder()
+                                                    .setAspectRatio(Rational(16, 9))
+                                                    .build()
+                                                activity?.enterPictureInPictureMode(params)
+                                            } catch (e: Exception) {
+                                                e.printStackTrace()
+                                            }
+                                        }
+                                    ) {
+                                        Icon(Icons.Default.PictureInPicture, contentDescription = "PiP Mode", tint = Color.White)
+                                    }
+                                }
+
+                                // Aspect Ratio switch
                                 IconButton(
                                     onClick = {
                                         resizeMode = when (resizeMode) {
@@ -326,7 +391,7 @@ fun VideoPlayerView(
                                         expanded = showSpeedMenu,
                                         onDismissRequest = { showSpeedMenu = false }
                                     ) {
-                                        listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { sp ->
+                                        listOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 2.5f, 3.0f).forEach { sp ->
                                             DropdownMenuItem(
                                                 text = { Text("${sp}x") },
                                                 onClick = {
@@ -345,7 +410,7 @@ fun VideoPlayerView(
                             }
                         }
 
-                        // Center Controls (Prev, 10s Back, Play/Pause, 10s Forward, Next)
+                        // Center Controls
                         Row(
                             modifier = Modifier.align(Alignment.Center),
                             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -395,13 +460,40 @@ fun VideoPlayerView(
                             }
                         }
 
-                        // Bottom Timeline Bar
+                        // Bottom Timeline & A-B Loop Bar
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.BottomCenter)
                                 .padding(16.dp)
                         ) {
+                            // A-B Loop Controls
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                FilterChip(
+                                    selected = loopPointA != null,
+                                    onClick = { playerManager.setLoopPointA() },
+                                    label = { Text(if (loopPointA == null) "Set A" else "A: ${formatDuration(loopPointA!!)}", fontSize = 10.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                FilterChip(
+                                    selected = loopPointB != null,
+                                    onClick = { playerManager.setLoopPointB() },
+                                    label = { Text(if (loopPointB == null) "Set B" else "B: ${formatDuration(loopPointB!!)}", fontSize = 10.sp) },
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                if (loopPointA != null || loopPointB != null) {
+                                    IconButton(onClick = { playerManager.clearAbLoop() }, modifier = Modifier.size(30.dp)) {
+                                        Icon(Icons.Default.Repeat, contentDescription = "Clear A-B Loop", tint = Color.White, modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
                             val currentPosFloat = position.toFloat().coerceIn(0f, duration.toFloat().coerceAtLeast(1f))
                             Slider(
                                 value = currentPosFloat,

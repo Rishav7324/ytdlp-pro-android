@@ -56,6 +56,13 @@ class MediaPlayerManager private constructor(context: Context) {
     private val _isAudioSheetOpen = MutableStateFlow(false)
     val isAudioSheetOpen: StateFlow<Boolean> = _isAudioSheetOpen.asStateFlow()
 
+    // A-B Loop
+    private val _loopPointA = MutableStateFlow<Long?>(null)
+    val loopPointA: StateFlow<Long?> = _loopPointA.asStateFlow()
+
+    private val _loopPointB = MutableStateFlow<Long?>(null)
+    val loopPointB: StateFlow<Long?> = _loopPointB.asStateFlow()
+
     private var progressJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
 
@@ -69,6 +76,7 @@ class MediaPlayerManager private constructor(context: Context) {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) {
                     _duration.value = player.duration.coerceAtLeast(0L)
+                    AudioFxManager.instance.initAudioEffects(player.audioSessionId)
                 } else if (state == Player.STATE_ENDED) {
                     playNext()
                 }
@@ -84,9 +92,20 @@ class MediaPlayerManager private constructor(context: Context) {
         progressJob?.cancel()
         progressJob = scope.launch {
             while (isActive) {
-                _currentPosition.value = player.currentPosition.coerceAtLeast(0L)
+                val pos = player.currentPosition.coerceAtLeast(0L)
+                _currentPosition.value = pos
                 _duration.value = player.duration.coerceAtLeast(0L)
-                delay(300)
+
+                // A-B Loop Check
+                val a = _loopPointA.value
+                val b = _loopPointB.value
+                if (a != null && b != null && b > a) {
+                    if (pos >= b) {
+                        player.seekTo(a)
+                    }
+                }
+
+                delay(200)
             }
         }
     }
@@ -114,6 +133,7 @@ class MediaPlayerManager private constructor(context: Context) {
             _queue.value = listOf(entity) + _queue.value
         }
 
+        clearAbLoop()
         val mediaItem = MediaItem.fromUri(uri)
         player.setMediaItem(mediaItem)
         player.prepare()
@@ -195,6 +215,22 @@ class MediaPlayerManager private constructor(context: Context) {
         _repeatMode.value = nextMode
     }
 
+    // A-B Loop Functions
+    fun setLoopPointA() {
+        _loopPointA.value = player.currentPosition
+    }
+
+    fun setLoopPointB() {
+        if (_loopPointA.value != null && player.currentPosition > _loopPointA.value!!) {
+            _loopPointB.value = player.currentPosition
+        }
+    }
+
+    fun clearAbLoop() {
+        _loopPointA.value = null
+        _loopPointB.value = null
+    }
+
     fun setVideoExpanded(expanded: Boolean) {
         _isVideoExpanded.value = expanded
     }
@@ -208,6 +244,8 @@ class MediaPlayerManager private constructor(context: Context) {
         _currentMedia.value = null
         _isVideoExpanded.value = false
         _isAudioSheetOpen.value = false
+        clearAbLoop()
+        AudioFxManager.instance.release()
         stopProgressTracking()
     }
 
