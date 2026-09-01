@@ -31,9 +31,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -43,8 +40,8 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ytdlp.app.data.local.DownloadEntity
 import com.ytdlp.app.data.local.MediaType
+import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.DownloadItemCard
-import com.ytdlp.app.ui.components.MediaPlayerModal
 import com.ytdlp.app.viewmodel.LibraryFilter
 import com.ytdlp.app.viewmodel.LibraryViewModel
 import java.io.File
@@ -54,10 +51,10 @@ fun LibraryScreen(
     viewModel: LibraryViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val playerManager = MediaPlayerManager.getInstance(context)
     val completedList by viewModel.completedDownloads.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
-    var selectedPlayingItem by remember { mutableStateOf<DownloadEntity?>(null) }
 
     Column(
         modifier = Modifier
@@ -159,19 +156,12 @@ fun LibraryScreen(
                         download = item,
                         onCancel = {},
                         onDelete = { viewModel.deleteDownload(it) },
-                        onPlay = { selectedPlayingItem = it },
+                        onPlay = { playerManager.playMedia(it) },
                         onShare = { shareMediaFile(context, it) }
                     )
                 }
             }
         }
-    }
-
-    selectedPlayingItem?.let { item ->
-        MediaPlayerModal(
-            item = item,
-            onDismiss = { selectedPlayingItem = null }
-        )
     }
 }
 

@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ytdlp.app.YtDlpApp
+import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.DownloadItemCard
 import com.ytdlp.app.ui.components.FormatSelectionSheet
 import com.ytdlp.app.ui.components.VideoPreviewCard
@@ -84,6 +85,7 @@ fun HomeScreen(
     onNavigateToQueue: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val playerManager = MediaPlayerManager.getInstance(context)
     val keyboardController = LocalSoftwareKeyboardController.current
     val uiState by viewModel.uiState.collectAsState()
     val urlInput by viewModel.urlInput.collectAsState()
@@ -408,7 +410,8 @@ fun HomeScreen(
                 DownloadItemCard(
                     download = item,
                     onCancel = { viewModel.cancelDownload(it) },
-                    onDelete = { viewModel.deleteDownload(it) }
+                    onDelete = { viewModel.deleteDownload(it) },
+                    onPlay = { playerManager.playMedia(it) }
                 )
             }
         }
