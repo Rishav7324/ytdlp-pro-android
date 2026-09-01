@@ -39,14 +39,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun parseUrl(url: String? = null) {
-        val targetUrl = (url ?: _urlInput.value).trim()
-        if (targetUrl.isBlank()) return
+        val raw = (url ?: _urlInput.value).trim()
+        if (raw.isBlank()) return
 
+        val targetUrl = YtDlpEngine.normalizeUrl(raw)
         _urlInput.value = targetUrl
         _uiState.value = HomeUiState.Loading
 
         viewModelScope.launch {
-            val result = YtDlpEngine.fetchVideoInfo(targetUrl)
+            val result = YtDlpEngine.fetchVideoInfo(getApplication(), targetUrl)
             result.fold(
                 onSuccess = { info ->
                     _uiState.value = HomeUiState.Success(info)

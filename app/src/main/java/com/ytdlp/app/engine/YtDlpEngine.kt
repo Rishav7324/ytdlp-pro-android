@@ -2,20 +2,73 @@ package com.ytdlp.app.engine
 
 import android.content.Context
 import android.util.Log
+import com.yausername.aria2c.Aria2c
+import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoInfo as YtdlVideoInfo
 import com.ytdlp.app.data.local.MediaType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
 object YtDlpEngine {
     private const val TAG = "YtDlpEngine"
+    private val initMutex = Mutex()
+    private var isInitialized = false
 
-    suspend fun fetchVideoInfo(url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
+    suspend fun ensureInitialized(context: Context) = withContext(Dispatchers.IO) {
+        if (isInitialized) return@withContext
+        initMutex.withLock {
+            if (!isInitialized) {
+                try {
+                    YoutubeDL.getInstance().init(context.applicationContext)
+                    FFmpeg.getInstance().init(context.applicationContext)
+                    Aria2c.getInstance().init(context.applicationContext)
+                    isInitialized = true
+                    Log.d(TAG, "yt-dlp, FFmpeg, and Aria2c initialized successfully")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error initializing yt-dlp components", e)
+                    // If already initialized, mark true
+                    if (e.message?.contains("already", ignoreCase = true) == true) {
+                        isInitialized = true
+                    } else {
+                        throw e
+                    }
+                }
+            }
+        }
+    }
+
+    fun normalizeUrl(rawUrl: String): String {
+        val trimmed = rawUrl.trim()
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed
+        }
+        // If it starts with a common domain
+        if (trimmed.startsWith("youtube.com/") || trimmed.startsWith("www.youtube.com/") ||
+            trimmed.startsWith("m.youtube.com/") || trimmed.startsWith("youtu.be/") ||
+            trimmed.startsWith("instagram.com/") || trimmed.startsWith("tiktok.com/") ||
+            trimmed.startsWith("twitter.com/") || trimmed.startsWith("x.com/") ||
+            trimmed.startsWith("reddit.com/") || trimmed.startsWith("bilibili.com/")) {
+            return "https://$trimmed"
+        }
+        // If it looks like a YouTube video ID (e.g. 11 characters before query params)
+        val cleanId = trimmed.split("?").firstOrNull() ?: trimmed
+        if (cleanId.length == 11 && cleanId.matches(Regex("^[a-zA-Z0-9_-]{11}$"))) {
+            return "https://www.youtube.com/watch?v=$trimmed"
+        }
+        // Default to https://
+        return "https://$trimmed"
+    }
+
+    suspend fun fetchVideoInfo(context: Context, url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
         try {
-            val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(url)
+            ensureInitialized(context)
+            val normalized = normalizeUrl(url)
+            val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(normalized)
             val formats = parseFormats(ydlInfo)
 
             val durationVal: Long = when (val d = ydlInfo.duration) {
@@ -29,7 +82,7 @@ object YtDlpEngine {
             }
 
             val videoInfo = VideoInfo(
-                url = url,
+                url = normalized,
                 id = ydlInfo.id ?: System.currentTimeMillis().toString(),
                 title = ydlInfo.title ?: "Unknown Title",
                 uploader = ydlInfo.uploader ?: ydlInfo.extractor ?: "Unknown Creator",
@@ -136,11 +189,13 @@ object YtDlpEngine {
         onProgress: (progress: Float, speed: String, eta: String, line: String) -> Unit
     ): Result<File> = withContext(Dispatchers.IO) {
         try {
+            ensureInitialized(context)
             if (!outputDir.exists()) {
                 outputDir.mkdirs()
             }
 
-            val request = YoutubeDLRequest(url)
+            val normalized = normalizeUrl(url)
+            val request = YoutubeDLRequest(normalized)
             request.addOption("-o", "${outputDir.absolutePath}/%(title)s.%(ext)s")
             request.addOption("--no-mtime")
             request.addOption("--restrict-filenames")
