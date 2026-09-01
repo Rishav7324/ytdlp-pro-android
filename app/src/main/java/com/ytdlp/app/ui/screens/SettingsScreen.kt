@@ -18,13 +18,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Subtitles
-import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,7 +29,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
@@ -44,7 +40,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,25 +47,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.ytdlp.app.engine.YtDlpUpdater
 import com.ytdlp.app.viewmodel.SettingsViewModel
-import kotlinx.coroutines.launch
+import com.ytdlp.app.viewmodel.UpdateState
 
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val preferences by viewModel.preferences.collectAsState()
+    val engineVersion by viewModel.engineVersion.collectAsState()
+    val updateState by viewModel.updateState.collectAsState()
+    val customArguments by viewModel.customArguments.collectAsState()
+    val embedSubtitles by viewModel.embedSubtitles.collectAsState()
+    val useAria2 by viewModel.useAria2.collectAsState()
 
-    var isUpdatingEngine by remember { mutableStateOf(false) }
-    var engineVersion by remember { mutableStateOf("yt-dlp latest") }
     var aria2Connections by remember { mutableFloatStateOf(8f) }
     var sponsorBlockEnabled by remember { mutableStateOf(true) }
-    var autoSubtitlesEnabled by remember { mutableStateOf(false) }
-    var proxyInput by remember { mutableStateOf("") }
-    var customArgsInput by remember { mutableStateOf(preferences.customArguments) }
+    var customArgsInput by remember { mutableStateOf("") }
+    var isInputInitialized by remember { mutableStateOf(false) }
+
+    if (!isInputInitialized && customArguments.isNotEmpty()) {
+        customArgsInput = customArguments
+        isInputInitialized = true
+    }
 
     Column(
         modifier = Modifier
@@ -102,31 +101,17 @@ fun SettingsScreen(
                         Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(10.dp))
                         Column {
-                            Text("yt-dlp Core Binary", fontWeight = FontWeight.Bold)
+                            Text("yt-dlp Core Engine", fontWeight = FontWeight.Bold)
                             Text(engineVersion, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                         }
                     }
 
                     Button(
-                        onClick = {
-                            scope.launch {
-                                isUpdatingEngine = true
-                                val res = YtDlpUpdater.updateEngine(context)
-                                isUpdatingEngine = false
-                                res.fold(
-                                    onSuccess = {
-                                        Toast.makeText(context, "yt-dlp updated to latest release!", Toast.LENGTH_LONG).show()
-                                    },
-                                    onFailure = {
-                                        Toast.makeText(context, "Engine check: ${it.message}", Toast.LENGTH_LONG).show()
-                                    }
-                                )
-                            }
-                        },
-                        enabled = !isUpdatingEngine,
+                        onClick = { viewModel.updateYtDlp() },
+                        enabled = updateState !is UpdateState.Checking,
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        if (isUpdatingEngine) {
+                        if (updateState is UpdateState.Checking) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -145,10 +130,17 @@ fun SettingsScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text("Aria2 Multi-Thread Accelerator", fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text("Aria2 Multi-Thread Accelerator", fontWeight = FontWeight.Bold)
+                    }
+                    Switch(checked = useAria2, onCheckedChange = { viewModel.setUseAria2(it) })
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -204,7 +196,7 @@ fun SettingsScreen(
                             Text("Embed multilingual subtitles when available", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
                         }
                     }
-                    Switch(checked = autoSubtitlesEnabled, onCheckedChange = { autoSubtitlesEnabled = it })
+                    Switch(checked = embedSubtitles, onCheckedChange = { viewModel.setEmbedSubtitles(it) })
                 }
             }
         }
@@ -251,7 +243,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
                         Text("yt-dlp Pro for Android", fontWeight = FontWeight.Bold)
-                        Text("Version 1.0.6 (Ultimate Edition)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text("Version 1.0.8 (Ultimate Edition)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
