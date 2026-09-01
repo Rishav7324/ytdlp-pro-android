@@ -92,7 +92,14 @@ object YtDlpEngine {
             }
 
             val normalized = normalizeUrl(url)
-            val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(normalized)
+            val request = YoutubeDLRequest(normalized)
+            request.addOption("--no-mtime")
+            request.addOption("--geo-bypass")
+            // Bypass YouTube bot verification & precondition checks using mobile client
+            request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
+            request.addOption("--no-check-certificates")
+
+            val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(request)
             val formats = parseFormats(ydlInfo)
 
             val durationVal: Long = when (val d = ydlInfo.duration) {
@@ -229,6 +236,9 @@ object YtDlpEngine {
             request.addOption("-o", "${outputDir.absolutePath}/%(title)s.%(ext)s")
             request.addOption("--no-mtime")
             request.addOption("--restrict-filenames")
+            request.addOption("--geo-bypass")
+            request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
+            request.addOption("--no-check-certificates")
 
             if (mediaType == MediaType.AUDIO) {
                 request.addOption("-x")
