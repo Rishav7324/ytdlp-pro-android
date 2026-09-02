@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -36,35 +35,22 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Hd
-import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistPlay
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -80,9 +66,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -91,9 +74,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
 import com.ytdlp.app.YtDlpApp
-import com.ytdlp.app.data.local.DownloadEntity
 import com.ytdlp.app.data.local.MediaType
 import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.DownloadItemCard
@@ -101,12 +82,8 @@ import com.ytdlp.app.ui.components.FormatSelectionSheet
 import com.ytdlp.app.ui.components.VideoPreviewCard
 import com.ytdlp.app.ui.components.batch.BatchDownloadModal
 import com.ytdlp.app.ui.components.equalizer.EqualizerDialog
-import com.ytdlp.app.ui.theme.AccentGreen
 import com.ytdlp.app.ui.theme.AccentOrange
-import com.ytdlp.app.ui.theme.AccentRed
-import com.ytdlp.app.ui.theme.BilibiliBlue
 import com.ytdlp.app.ui.theme.InstagramPink
-import com.ytdlp.app.ui.theme.PrimaryIndigo
 import com.ytdlp.app.ui.theme.RedditOrange
 import com.ytdlp.app.ui.theme.SoundCloudOrange
 import com.ytdlp.app.ui.theme.TikTokCyan
@@ -130,8 +107,6 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val urlInput by viewModel.urlInput.collectAsState()
     val recentDownloads by viewModel.recentDownloads.collectAsState(initial = emptyList())
-    val isEngineReady by YtDlpApp.instance.isEngineReady.collectAsState()
-    val initError by YtDlpApp.instance.initError.collectAsState()
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showBottomSheet by remember { mutableStateOf(false) }
@@ -219,7 +194,13 @@ fun HomeScreen(
                             IconButton(onClick = { showEqualizer = true }) {
                                 Icon(Icons.Default.Tune, contentDescription = "Audio Studio FX", tint = MaterialTheme.colorScheme.primary)
                             }
-                            IconButton(onClick = { showBatchModal = true }) {
+                            IconButton(onClick = {
+                                if (uiState is HomeUiState.Success) {
+                                    showBatchModal = true
+                                } else if (urlInput.isNotBlank()) {
+                                    viewModel.parseUrl(urlInput)
+                                }
+                            }) {
                                 Icon(Icons.Default.PlaylistPlay, contentDescription = "Batch Downloader", tint = MaterialTheme.colorScheme.secondary)
                             }
                         }
@@ -462,8 +443,20 @@ fun HomeScreen(
         )
     }
 
-    if (showBatchModal) {
-        BatchDownloadModal(onDismiss = { showBatchModal = false })
+    if (showBatchModal && uiState is HomeUiState.Success) {
+        val info = (uiState as HomeUiState.Success).videoInfo
+        BatchDownloadModal(
+            playlistTitle = info.title,
+            itemsList = listOf(info),
+            onDismiss = { showBatchModal = false },
+            onBatchDownload = { selectedItems, formatId, mediaType, audioExt ->
+                selectedItems.forEach { item ->
+                    viewModel.startDownload(item, formatId, mediaType, audioExt, autoStart = true)
+                }
+                showBatchModal = false
+                onNavigateToQueue()
+            }
+        )
     }
 
     if (showEqualizer) {

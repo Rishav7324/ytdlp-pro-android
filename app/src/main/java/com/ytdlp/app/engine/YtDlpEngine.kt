@@ -5,24 +5,23 @@ import android.util.Log
 import com.yaedd.youtubedl_android.YoutubeDL
 import com.yaedd.youtubedl_android.YoutubeDLException
 import com.yaedd.youtubedl_android.YoutubeDLRequest
-import com.yaedd.youtubedl_android.YoutubeDLResponse
+import com.yaedd.youtubedl_android.mapper.VideoInfo as YtdlVideoInfo
 import com.ytdlp.app.data.local.MediaType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.io.File
 
 data class VideoInfo(
+    val url: String,
     val id: String,
     val title: String,
     val uploader: String,
-    val durationSeconds: Long,
     val thumbnailUrl: String,
-    val webpageUrl: String,
-    val formats: List<DownloadFormat>,
+    val durationSeconds: Long,
     val viewCount: Long = 0,
-    val uploadDate: String = "",
-    val description: String = ""
+    val description: String = "",
+    val extractor: String = "",
+    val formats: List<DownloadFormat> = emptyList()
 )
 
 data class DownloadFormat(
@@ -30,10 +29,7 @@ data class DownloadFormat(
     val extension: String,
     val resolution: String,
     val note: String,
-    val isAudioOnly: Boolean,
-    val filesize: Long = 0,
-    val formatNote: String = "",
-    val qualityRank: Int = 0
+    val isAudioOnly: Boolean
 )
 
 object YtDlpEngine {
@@ -57,7 +53,15 @@ object YtDlpEngine {
         }
     }
 
-    suspend fun extractInfo(context: Context, url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
+    fun normalizeUrl(rawUrl: String): String {
+        var url = rawUrl.trim()
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "https://$url"
+        }
+        return url
+    }
+
+    suspend fun fetchVideoInfo(context: Context, url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
         try {
             val initRes = ensureInitialized(context)
             if (initRes.isFailure) {
@@ -67,75 +71,38 @@ object YtDlpEngine {
             }
 
             val normalized = normalizeUrl(url)
-            val request = YoutubeDLRequest(normalized)
-            request.addOption("--dump-single-json")
-            request.addOption("--no-playlist")
-            request.addOption("--no-check-certificates")
-            request.addOption("--geo-bypass")
-            request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
+            val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(normalized)
 
-            val response: YoutubeDLResponse = YoutubeDL.getInstance().execute(request)
-            val output = response.out
-
-            if (output.isNullOrBlank()) {
-                return@withContext Result.failure(YoutubeDLException("Empty metadata response from extractor"))
+            val formats = parseFormats(ydlInfo)
+            val durationVal = when (val d = ydlInfo.duration) {
+                is Number -> d.toLong()
+                else -> 0L
+            }
+            val viewCountVal = when (val v = ydlInfo.viewCount) {
+                is Number -> v.toLong()
+                else -> 0L
             }
 
-            val json = JSONObject(output)
-            val videoInfo = parseVideoInfoJson(json, normalized)
+            val videoInfo = VideoInfo(
+                url = normalized,
+                id = ydlInfo.id ?: System.currentTimeMillis().toString(),
+                title = ydlInfo.title ?: "Unknown Title",
+                uploader = ydlInfo.uploader ?: ydlInfo.extractor ?: "Unknown Creator",
+                thumbnailUrl = ydlInfo.thumbnail ?: "",
+                durationSeconds = durationVal,
+                viewCount = viewCountVal,
+                description = ydlInfo.description ?: "",
+                extractor = ydlInfo.extractor ?: "",
+                formats = formats
+            )
             Result.success(videoInfo)
-        } catch (e: YoutubeDLException) {
-            Log.e(TAG, "yt-dlp extraction error for URL: $url", e)
-            Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during extraction: $url", e)
+            Log.e(TAG, "Failed to fetch video info for $url", e)
             Result.failure(e)
         }
     }
 
-    private fun normalizeUrl(rawUrl: String): String {
-        var url = rawUrl.trim()
-        if (!url.startsWith("http://") && !url.startsWith("https://")) {
-            url = "https://$url"
-        }
-        return url
-    }
-
-    private fun parseVideoInfoJson(json: JSONObject, rawUrl: String): VideoInfo {
-        val id = json.optString("id", System.currentTimeMillis().toString())
-        val title = json.optString("title", "Untitled Media")
-        val uploader = json.optString("uploader", json.optString("channel", "Unknown Creator"))
-        val duration = json.optLong("duration", 0L)
-        val webpageUrl = json.optString("webpage_url", rawUrl)
-        val viewCount = json.optLong("view_count", 0L)
-        val uploadDate = json.optString("upload_date", "")
-        val description = json.optString("description", "")
-
-        var thumbnailUrl = json.optString("thumbnail", "")
-        if (thumbnailUrl.isBlank()) {
-            val thumbnailsArray = json.optJSONArray("thumbnails")
-            if (thumbnailsArray != null && thumbnailsArray.length() > 0) {
-                thumbnailUrl = thumbnailsArray.getJSONObject(thumbnailsArray.length() - 1).optString("url", "")
-            }
-        }
-
-        val formats = buildHighQualityPresets()
-
-        return VideoInfo(
-            id = id,
-            title = title,
-            uploader = uploader,
-            durationSeconds = duration,
-            thumbnailUrl = thumbnailUrl,
-            webpageUrl = webpageUrl,
-            formats = formats,
-            viewCount = viewCount,
-            uploadDate = uploadDate,
-            description = description
-        )
-    }
-
-    private fun buildHighQualityPresets(): List<DownloadFormat> {
+    private fun parseFormats(ydlInfo: YtdlVideoInfo): List<DownloadFormat> {
         val list = mutableListOf<DownloadFormat>()
 
         // 4K Ultra HD
@@ -145,20 +112,18 @@ object YtDlpEngine {
                 extension = "mp4",
                 resolution = "4K 2160p Ultra HD",
                 note = "Crisp 4K UHD Video + High Bitrate Audio",
-                isAudioOnly = false,
-                qualityRank = 2160
+                isAudioOnly = false
             )
         )
 
-        // 1080p Full HD
+        // 1080p Full HD (Recommended)
         list.add(
             DownloadFormat(
                 formatId = "bv*[height<=1080]+ba/b[height<=1080]/best",
                 extension = "mp4",
                 resolution = "1080p Full HD",
                 note = "Crisp 1080p FHD Video + High Bitrate Audio (Recommended)",
-                isAudioOnly = false,
-                qualityRank = 1080
+                isAudioOnly = false
             )
         )
 
@@ -168,9 +133,8 @@ object YtDlpEngine {
                 formatId = "bv*[height<=720]+ba/b[height<=720]/best",
                 extension = "mp4",
                 resolution = "720p HD",
-                note = "Standard HD / Fast Download",
-                isAudioOnly = false,
-                qualityRank = 720
+                note = "Fast download, standard HD quality",
+                isAudioOnly = false
             )
         )
 
@@ -181,8 +145,7 @@ object YtDlpEngine {
                 extension = "mp4",
                 resolution = "480p SD",
                 note = "Low data usage",
-                isAudioOnly = false,
-                qualityRank = 480
+                isAudioOnly = false
             )
         )
 
@@ -193,8 +156,7 @@ object YtDlpEngine {
                 extension = "mp3",
                 resolution = "Audio (MP3 320k Studio)",
                 note = "Highest Quality 320kbps MP3",
-                isAudioOnly = true,
-                qualityRank = 320
+                isAudioOnly = true
             )
         )
         list.add(
@@ -202,9 +164,8 @@ object YtDlpEngine {
                 formatId = "ba/b",
                 extension = "m4a",
                 resolution = "Audio (M4A / AAC)",
-                note = "Crystal Clear AAC Audio",
-                isAudioOnly = true,
-                qualityRank = 256
+                note = "Apple & Android Native AAC",
+                isAudioOnly = true
             )
         )
 
@@ -260,7 +221,6 @@ object YtDlpEngine {
                 }
                 request.addOption("--add-metadata")
             } else {
-                // Ensure High-Definition Video Stream + Audio stream merging
                 val finalFormat = if (formatId.isNotBlank()) {
                     if (formatId.contains("+") || formatId.contains("bv*") || formatId.contains("bestvideo")) {
                         formatId

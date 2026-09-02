@@ -22,7 +22,7 @@ android {
         applicationId = "com.ytdlp.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20
+        versionCode = 21
         versionName = "1.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
