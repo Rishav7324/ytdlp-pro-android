@@ -129,19 +129,18 @@ class DownloadService : Service() {
 
             result.fold(
                 onSuccess = { file ->
-                    repository.markCompleted(download.id, file.absolutePath)
-                    // Trigger Android Media Scanner
-                    MediaScannerConnection.scanFile(
-                        this@DownloadService,
-                        arrayOf(file.absolutePath),
-                        null,
-                        null
+                    val publicFile = com.ytdlp.app.util.StorageHelper.exportToPublicStorage(
+                        context = this@DownloadService,
+                        srcFile = file,
+                        mediaType = download.mediaType,
+                        title = download.title
                     )
+                    repository.markCompleted(download.id, publicFile.absolutePath)
                     NotificationHelper.showCompletedNotification(
                         this@DownloadService,
                         download.id.toInt(),
                         download.title,
-                        file.absolutePath
+                        publicFile.absolutePath
                     )
                 },
                 onFailure = { error ->
