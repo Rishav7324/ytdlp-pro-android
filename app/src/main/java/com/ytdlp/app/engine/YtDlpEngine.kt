@@ -2,12 +2,16 @@ package com.ytdlp.app.engine
 
 import android.content.Context
 import android.util.Log
-import com.yaedd.youtubedl_android.YoutubeDL
-import com.yaedd.youtubedl_android.YoutubeDLException
-import com.yaedd.youtubedl_android.YoutubeDLRequest
-import com.yaedd.youtubedl_android.mapper.VideoInfo as YtdlVideoInfo
+import com.yausername.aria2c.Aria2c
+import com.yausername.ffmpeg.FFmpeg
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLException
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.yausername.youtubedl_android.mapper.VideoInfo as YtdlVideoInfo
 import com.ytdlp.app.data.local.MediaType
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -35,21 +39,47 @@ data class DownloadFormat(
 object YtDlpEngine {
 
     private const val TAG = "YtDlpEngine"
-    private var isInitialized = false
-    private var lastInitError: String? = null
+    private val initMutex = Mutex()
+    var isInitialized = false
+        private set
+    var lastInitError: String? = null
+        private set
 
     suspend fun ensureInitialized(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
         if (isInitialized) return@withContext Result.success(Unit)
+        initMutex.withLock {
+            if (isInitialized) return@withContext Result.success(Unit)
+            try {
+                Log.d(TAG, "Initializing yt-dlp, FFmpeg, and Aria2c native libraries...")
+                val appContext = context.applicationContext
 
-        try {
-            YoutubeDL.getInstance().init(context.applicationContext)
-            isInitialized = true
-            Log.d(TAG, "yt-dlp engine initialized successfully")
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize yt-dlp engine", e)
-            lastInitError = e.message
-            Result.failure(e)
+                try {
+                    YoutubeDL.getInstance().init(appContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "YoutubeDL init returned: ${e.message}")
+                }
+
+                try {
+                    FFmpeg.getInstance().init(appContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "FFmpeg init returned: ${e.message}")
+                }
+
+                try {
+                    Aria2c.getInstance().init(appContext)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Aria2c init returned: ${e.message}")
+                }
+
+                isInitialized = true
+                lastInitError = null
+                Log.d(TAG, "yt-dlp engine fully initialized and ready")
+                Result.success(Unit)
+            } catch (e: Exception) {
+                Log.e(TAG, "Fatal error during yt-dlp initialization", e)
+                lastInitError = e.message ?: "Unknown initialization error"
+                Result.failure(e)
+            }
         }
     }
 
