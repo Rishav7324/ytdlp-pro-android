@@ -15,27 +15,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-data class VideoInfo(
-    val url: String,
-    val id: String,
-    val title: String,
-    val uploader: String,
-    val thumbnailUrl: String,
-    val durationSeconds: Long,
-    val viewCount: Long = 0,
-    val description: String = "",
-    val extractor: String = "",
-    val formats: List<DownloadFormat> = emptyList()
-)
-
-data class DownloadFormat(
-    val formatId: String,
-    val extension: String,
-    val resolution: String,
-    val note: String,
-    val isAudioOnly: Boolean
-)
-
 object YtDlpEngine {
 
     private const val TAG = "YtDlpEngine"
