@@ -2,87 +2,62 @@ package com.ytdlp.app.engine
 
 import android.content.Context
 import android.util.Log
-import com.yausername.aria2c.Aria2c
-import com.yausername.ffmpeg.FFmpeg
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLException
-import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.youtubedl_android.mapper.VideoInfo as YtdlVideoInfo
+import com.yaedd.youtubedl_android.YoutubeDL
+import com.yaedd.youtubedl_android.YoutubeDLException
+import com.yaedd.youtubedl_android.YoutubeDLRequest
+import com.yaedd.youtubedl_android.YoutubeDLResponse
 import com.ytdlp.app.data.local.MediaType
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.File
 
+data class VideoInfo(
+    val id: String,
+    val title: String,
+    val uploader: String,
+    val durationSeconds: Long,
+    val thumbnailUrl: String,
+    val webpageUrl: String,
+    val formats: List<DownloadFormat>,
+    val viewCount: Long = 0,
+    val uploadDate: String = "",
+    val description: String = ""
+)
+
+data class DownloadFormat(
+    val formatId: String,
+    val extension: String,
+    val resolution: String,
+    val note: String,
+    val isAudioOnly: Boolean,
+    val filesize: Long = 0,
+    val formatNote: String = "",
+    val qualityRank: Int = 0
+)
+
 object YtDlpEngine {
+
     private const val TAG = "YtDlpEngine"
-    private val initMutex = Mutex()
-    var isInitialized = false
-        private set
-    var lastInitError: String? = null
-        private set
+    private var isInitialized = false
+    private var lastInitError: String? = null
 
     suspend fun ensureInitialized(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
         if (isInitialized) return@withContext Result.success(Unit)
-        initMutex.withLock {
-            if (isInitialized) return@withContext Result.success(Unit)
-            try {
-                Log.d(TAG, "Initializing yt-dlp, FFmpeg, and Aria2c native libraries...")
-                val appContext = context.applicationContext
 
-                try {
-                    YoutubeDL.getInstance().init(appContext)
-                } catch (e: Exception) {
-                    if (e.message?.contains("already initialized", ignoreCase = true) != true) {
-                        throw e
-                    }
-                }
-
-                try {
-                    FFmpeg.getInstance().init(appContext)
-                } catch (e: Exception) {
-                    Log.w(TAG, "FFmpeg init notice: ${e.message}")
-                }
-
-                try {
-                    Aria2c.getInstance().init(appContext)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Aria2c init notice: ${e.message}")
-                }
-
-                isInitialized = true
-                lastInitError = null
-                Log.d(TAG, "All engine components successfully initialized")
-                Result.success(Unit)
-            } catch (e: Throwable) {
-                lastInitError = e.message ?: "Failed to extract native binaries"
-                Log.e(TAG, "Fatal engine initialization failure", e)
-                Result.failure(e)
-            }
+        try {
+            YoutubeDL.getInstance().init(context.applicationContext)
+            isInitialized = true
+            Log.d(TAG, "yt-dlp engine initialized successfully")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize yt-dlp engine", e)
+            lastInitError = e.message
+            Result.failure(e)
         }
     }
 
-    fun normalizeUrl(rawUrl: String): String {
-        val trimmed = rawUrl.trim()
-        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-            return trimmed
-        }
-        if (trimmed.startsWith("youtube.com/") || trimmed.startsWith("www.youtube.com/") ||
-            trimmed.startsWith("m.youtube.com/") || trimmed.startsWith("youtu.be/") ||
-            trimmed.startsWith("instagram.com/") || trimmed.startsWith("tiktok.com/") ||
-            trimmed.startsWith("twitter.com/") || trimmed.startsWith("x.com/") ||
-            trimmed.startsWith("reddit.com/") || trimmed.startsWith("bilibili.com/")) {
-            return "https://$trimmed"
-        }
-        val cleanId = trimmed.split("?").firstOrNull() ?: trimmed
-        if (cleanId.length == 11 && cleanId.matches(Regex("^[a-zA-Z0-9_-]{11}$"))) {
-            return "https://www.youtube.com/watch?v=$trimmed"
-        }
-        return "https://$trimmed"
-    }
-
-    suspend fun fetchVideoInfo(context: Context, url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
+    suspend fun extractInfo(context: Context, url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
         try {
             val initRes = ensureInitialized(context)
             if (initRes.isFailure) {
@@ -93,111 +68,143 @@ object YtDlpEngine {
 
             val normalized = normalizeUrl(url)
             val request = YoutubeDLRequest(normalized)
-            request.addOption("--no-mtime")
-            request.addOption("--geo-bypass")
-            // Bypass YouTube bot verification & precondition checks using mobile client
-            request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
+            request.addOption("--dump-single-json")
+            request.addOption("--no-playlist")
             request.addOption("--no-check-certificates")
+            request.addOption("--geo-bypass")
+            request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
 
-            val ydlInfo: YtdlVideoInfo = YoutubeDL.getInstance().getInfo(request)
-            val formats = parseFormats(ydlInfo)
+            val response: YoutubeDLResponse = YoutubeDL.getInstance().execute(request)
+            val output = response.out
 
-            val durationVal: Long = when (val d = ydlInfo.duration) {
-                is Number -> d.toLong()
-                else -> 0L
+            if (output.isNullOrBlank()) {
+                return@withContext Result.failure(YoutubeDLException("Empty metadata response from extractor"))
             }
 
-            val viewCountVal: Long = when (val v = ydlInfo.viewCount) {
-                is Number -> v.toLong()
-                else -> 0L
-            }
-
-            val videoInfo = VideoInfo(
-                url = normalized,
-                id = ydlInfo.id ?: System.currentTimeMillis().toString(),
-                title = ydlInfo.title ?: "Unknown Title",
-                uploader = ydlInfo.uploader ?: ydlInfo.extractor ?: "Unknown Creator",
-                thumbnailUrl = ydlInfo.thumbnail ?: "",
-                durationSeconds = durationVal,
-                viewCount = viewCountVal,
-                description = ydlInfo.description ?: "",
-                extractor = ydlInfo.extractor ?: "",
-                formats = formats
-            )
+            val json = JSONObject(output)
+            val videoInfo = parseVideoInfoJson(json, normalized)
             Result.success(videoInfo)
+        } catch (e: YoutubeDLException) {
+            Log.e(TAG, "yt-dlp extraction error for URL: $url", e)
+            Result.failure(e)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch video info for $url", e)
+            Log.e(TAG, "Unexpected error during extraction: $url", e)
             Result.failure(e)
         }
     }
 
-    private fun parseFormats(ydlInfo: YtdlVideoInfo): List<DownloadFormat> {
+    private fun normalizeUrl(rawUrl: String): String {
+        var url = rawUrl.trim()
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            url = "https://$url"
+        }
+        return url
+    }
+
+    private fun parseVideoInfoJson(json: JSONObject, rawUrl: String): VideoInfo {
+        val id = json.optString("id", System.currentTimeMillis().toString())
+        val title = json.optString("title", "Untitled Media")
+        val uploader = json.optString("uploader", json.optString("channel", "Unknown Creator"))
+        val duration = json.optLong("duration", 0L)
+        val webpageUrl = json.optString("webpage_url", rawUrl)
+        val viewCount = json.optLong("view_count", 0L)
+        val uploadDate = json.optString("upload_date", "")
+        val description = json.optString("description", "")
+
+        var thumbnailUrl = json.optString("thumbnail", "")
+        if (thumbnailUrl.isBlank()) {
+            val thumbnailsArray = json.optJSONArray("thumbnails")
+            if (thumbnailsArray != null && thumbnailsArray.length() > 0) {
+                thumbnailUrl = thumbnailsArray.getJSONObject(thumbnailsArray.length() - 1).optString("url", "")
+            }
+        }
+
+        val formats = buildHighQualityPresets()
+
+        return VideoInfo(
+            id = id,
+            title = title,
+            uploader = uploader,
+            durationSeconds = duration,
+            thumbnailUrl = thumbnailUrl,
+            webpageUrl = webpageUrl,
+            formats = formats,
+            viewCount = viewCount,
+            uploadDate = uploadDate,
+            description = description
+        )
+    }
+
+    private fun buildHighQualityPresets(): List<DownloadFormat> {
         val list = mutableListOf<DownloadFormat>()
 
-        // Default Presets
+        // 4K Ultra HD
         list.add(
             DownloadFormat(
-                formatId = "bestvideo+bestaudio/best",
+                formatId = "bv*[height<=2160]+ba/b[height<=2160]/best",
                 extension = "mp4",
-                resolution = "Best Video (Max Quality)",
-                note = "Highest available resolution & audio",
-                isAudioOnly = false
+                resolution = "4K 2160p Ultra HD",
+                note = "Crisp 4K UHD Video + High Bitrate Audio",
+                isAudioOnly = false,
+                qualityRank = 2160
             )
         )
+
+        // 1080p Full HD
         list.add(
             DownloadFormat(
-                formatId = "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+                formatId = "bv*[height<=1080]+ba/b[height<=1080]/best",
                 extension = "mp4",
                 resolution = "1080p Full HD",
-                note = "1080p MP4 / Recommended",
-                isAudioOnly = false
+                note = "Crisp 1080p FHD Video + High Bitrate Audio (Recommended)",
+                isAudioOnly = false,
+                qualityRank = 1080
             )
         )
+
+        // 720p HD
         list.add(
             DownloadFormat(
-                formatId = "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+                formatId = "bv*[height<=720]+ba/b[height<=720]/best",
                 extension = "mp4",
                 resolution = "720p HD",
-                note = "Fast download, good quality",
-                isAudioOnly = false
+                note = "Standard HD / Fast Download",
+                isAudioOnly = false,
+                qualityRank = 720
             )
         )
+
+        // 480p SD
         list.add(
             DownloadFormat(
-                formatId = "bestvideo[height<=480]+bestaudio/best[height<=480]/best",
+                formatId = "bv*[height<=480]+ba/b[height<=480]/best",
                 extension = "mp4",
                 resolution = "480p SD",
                 note = "Low data usage",
-                isAudioOnly = false
+                isAudioOnly = false,
+                qualityRank = 480
             )
         )
 
         // Audio Presets
         list.add(
             DownloadFormat(
-                formatId = "bestaudio/best",
+                formatId = "ba/b",
                 extension = "mp3",
-                resolution = "Audio (MP3 320k)",
-                note = "Best quality audio extraction",
-                isAudioOnly = true
+                resolution = "Audio (MP3 320k Studio)",
+                note = "Highest Quality 320kbps MP3",
+                isAudioOnly = true,
+                qualityRank = 320
             )
         )
         list.add(
             DownloadFormat(
-                formatId = "bestaudio/best",
+                formatId = "ba/b",
                 extension = "m4a",
                 resolution = "Audio (M4A / AAC)",
-                note = "Apple & Android native format",
-                isAudioOnly = true
-            )
-        )
-        list.add(
-            DownloadFormat(
-                formatId = "bestaudio/best",
-                extension = "opus",
-                resolution = "Audio (OPUS)",
-                note = "High efficiency audio codec",
-                isAudioOnly = true
+                note = "Crystal Clear AAC Audio",
+                isAudioOnly = true,
+                qualityRank = 256
             )
         )
 
@@ -214,7 +221,7 @@ object YtDlpEngine {
         audioExtension: String = "mp3",
         embedThumbnail: Boolean = true,
         embedSubtitles: Boolean = false,
-        useAria2: Boolean = true,
+        useAria2: Boolean = false,
         customArgs: String = "",
         cookiesFile: File? = null,
         onProgress: (progress: Float, speed: String, eta: String, line: String) -> Unit
@@ -241,7 +248,7 @@ object YtDlpEngine {
             request.addOption("--geo-bypass")
             request.addOption("--extractor-args", "youtube:player_client=android,ios,web")
             request.addOption("--no-check-certificates")
-            request.addOption("--concurrent-fragments", "4")
+            request.addOption("--concurrent-fragments", "5")
 
             if (mediaType == MediaType.AUDIO) {
                 request.addOption("-f", "ba/b")
@@ -253,20 +260,24 @@ object YtDlpEngine {
                 }
                 request.addOption("--add-metadata")
             } else {
-                request.addOption("-f", formatId)
+                // Ensure High-Definition Video Stream + Audio stream merging
+                val finalFormat = if (formatId.isNotBlank()) {
+                    if (formatId.contains("+") || formatId.contains("bv*") || formatId.contains("bestvideo")) {
+                        formatId
+                    } else {
+                        "$formatId+ba/b/best"
+                    }
+                } else {
+                    "bv*[height<=1080]+ba/b[height<=1080]/best"
+                }
+                request.addOption("-f", finalFormat)
                 if (embedThumbnail) {
                     request.addOption("--embed-thumbnail")
                 }
                 if (embedSubtitles) {
                     request.addOption("--embed-subs")
-                    request.addOption("--all-subs")
                 }
                 request.addOption("--merge-output-format", "mp4")
-            }
-
-            if (useAria2) {
-                request.addOption("--external-downloader", "aria2c")
-                request.addOption("--external-downloader-args", "aria2c:-j 8 -x 8 -s 8 -k 1M")
             }
 
             if (cookiesFile != null && cookiesFile.exists()) {
@@ -289,7 +300,6 @@ object YtDlpEngine {
                 val calculatedProgress = if (progress > 0f) progress else lastProgress
                 lastProgress = calculatedProgress
 
-                // Parse speed if available in stdout
                 if (line.contains("at") && line.contains("/s")) {
                     val match = Regex("""at\s+([0-9.]+[KMG]i?B/s)""").find(line)
                     if (match != null) {
@@ -306,13 +316,15 @@ object YtDlpEngine {
                 onProgress(calculatedProgress, lastSpeed, lastEta, line)
             }
 
-            // Find downloaded file
-            val files = outputDir.listFiles()?.sortedByDescending { it.lastModified() }
-            val downloadedFile = files?.firstOrNull() ?: outputDir
+            val downloadedFile = validDir.listFiles()?.maxByOrNull { it.lastModified() }
+            if (downloadedFile != null && downloadedFile.exists()) {
+                Result.success(downloadedFile)
+            } else {
+                Result.failure(YoutubeDLException("Download completed but output file could not be located in $validDir"))
+            }
 
-            Result.success(downloadedFile)
         } catch (e: Exception) {
-            Log.e(TAG, "Download execution failed for taskId: $taskId", e)
+            Log.e(TAG, "Download execution failed for URL: $url", e)
             Result.failure(e)
         }
     }
@@ -320,8 +332,9 @@ object YtDlpEngine {
     fun cancelDownload(taskId: String) {
         try {
             YoutubeDL.getInstance().destroyProcessById(taskId)
+            Log.d(TAG, "Cancelled download process for task: $taskId")
         } catch (e: Exception) {
-            Log.e(TAG, "Error cancelling download $taskId", e)
+            Log.e(TAG, "Failed to cancel process for task: $taskId", e)
         }
     }
 }

@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & Bundle
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build & Package APK
+    name: Build & Package Release & Debug APK
     runs-on: ubuntu-latest
 
     steps:
@@ -32,22 +32,28 @@ jobs:
       - name: Grant Execute Permission for Gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
+      - name: Build Release & Debug APK + AAB Bundle
+        run: ./gradlew assembleRelease assembleDebug bundleRelease --stacktrace --no-daemon
 
-      - name: Upload Debug APK Artifact
+      - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: YtDlp-Android-Debug-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: YtDlp-Android-Packages
+          path: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/release/*.aab
           retention-days: 30
 
       - name: Create GitHub Release (On Tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: app/build/outputs/apk/debug/*.apk
+          files: |
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/bundle/release/*.aab
           draft: false
           prerelease: false
           generate_release_notes: true
