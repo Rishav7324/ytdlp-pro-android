@@ -15,30 +15,43 @@ object YtDlpUpdater {
         if (initResult.isFailure) {
             val error = initResult.exceptionOrNull()
             Log.e(TAG, "Cannot read yt-dlp version because engine initialization failed", error)
-            return@withContext "Unavailable"
+            return@withContext "Engine unavailable"
         }
 
         runCatching {
-            YoutubeDL.getInstance().version(context)?.takeIf { it.isNotBlank() } ?: "Unknown"
+            val version = YoutubeDL.getInstance().version(context)?.takeIf { it.isNotBlank() }
+            val name = YoutubeDL.getInstance().versionName(context)?.takeIf { it.isNotBlank() }
+            version ?: name ?: "Bundled yt-dlp"
         }.getOrElse { error ->
             Log.e(TAG, "Failed to get yt-dlp version", error)
-            "Unavailable"
+            "Bundled yt-dlp"
         }
     }
 
     suspend fun updateEngine(
         context: Context,
-        channel: UpdateChannel = UpdateChannel._STABLE
+        channel: UpdateChannel = UpdateChannel.STABLE
     ): Result<String> = withContext(Dispatchers.IO) {
         YtDlpEngine.ensureInitialized(context).fold(
             onSuccess = {
                 runCatching {
-                    val status = YoutubeDL.getInstance().updateYoutubeDL(context, channel)
-                    val newVersion = YoutubeDL.getInstance().version(context)?.takeIf { it.isNotBlank() }
-                        ?: "Updated"
-                    Log.d(TAG, "yt-dlp update status: $status, version: $newVersion")
-                    newVersion
-                }
+                    val status = YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext, channel)
+                    val version = YoutubeDL.getInstance().version(context)?.takeIf { it.isNotBlank() }
+                    val versionName = YoutubeDL.getInstance().versionName(context)?.takeIf { it.isNotBlank() }
+                    when (status) {
+                        YoutubeDL.UpdateStatus.DONE -> version ?: versionName ?: "Updated"
+                        YoutubeDL.UpdateStatus.ALREADY_UP_TO_DATE -> version ?: versionName ?: "Already up to date"
+                        null -> version ?: versionName ?: "Update completed"
+                    }.also { result ->
+                        Log.d(TAG, "yt-dlp stable update status=$status, version=$result")
+                    }
+                }.fold(
+                    onSuccess = { Result.success(it) },
+                    onFailure = { error ->
+                        Log.e(TAG, "yt-dlp stable update failed", error)
+                        Result.failure(error)
+                    }
+                )
             },
             onFailure = { error ->
                 Log.e(TAG, "Cannot update yt-dlp because engine initialization failed", error)
