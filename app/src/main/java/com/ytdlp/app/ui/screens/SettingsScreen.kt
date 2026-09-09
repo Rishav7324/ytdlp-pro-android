@@ -1,7 +1,11 @@
 package com.ytdlp.app.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -19,14 +24,13 @@ import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,18 +48,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ytdlp.app.ui.theme.NovaAqua
+import com.ytdlp.app.ui.theme.NovaAquaSoft
+import com.ytdlp.app.ui.theme.NovaInk
 import com.ytdlp.app.viewmodel.SettingsViewModel
 import com.ytdlp.app.viewmodel.UpdateState
 
 @Composable
-fun SettingsScreen(
-    viewModel: SettingsViewModel = viewModel()
-) {
+fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val engineVersion by viewModel.engineVersion.collectAsState()
     val updateState by viewModel.updateState.collectAsState()
     val customArguments by viewModel.customArguments.collectAsState()
@@ -65,11 +75,10 @@ fun SettingsScreen(
     var aria2Connections by remember { mutableFloatStateOf(8f) }
     var sponsorBlockEnabled by remember { mutableStateOf(true) }
     var customArgsInput by remember { mutableStateOf("") }
-    var isInputInitialized by remember { mutableStateOf(false) }
-
-    if (!isInputInitialized && customArguments.isNotEmpty()) {
+    var initialized by remember { mutableStateOf(false) }
+    if (!initialized) {
         customArgsInput = customArguments
-        isInputInitialized = true
+        initialized = true
     }
 
     LaunchedEffect(updateState) {
@@ -81,184 +90,125 @@ fun SettingsScreen(
     }
 
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Settings & Engine",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
+        Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold)
+        Text("Tune NovaFetch for downloads, playback and engine performance.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("yt-dlp Core Engine", fontWeight = FontWeight.Bold)
-                            Text(engineVersion, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                        }
-                    }
-
-                    Button(
-                        onClick = { viewModel.updateYtDlp() },
-                        enabled = updateState !is UpdateState.Checking,
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        if (updateState is UpdateState.Checking) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Update")
-                        }
-                    }
+        SettingsCard {
+            SettingHeader(Icons.Default.CloudDownload, "yt-dlp Core Engine", engineVersion)
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = { viewModel.updateYtDlp() },
+                enabled = updateState !is UpdateState.Checking,
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                if (updateState is UpdateState.Checking) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Checking engine…")
+                } else {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Check for yt-dlp update")
                 }
             }
         }
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text("Aria2 Multi-Thread Accelerator", fontWeight = FontWeight.Bold)
-                    }
-                    Switch(checked = useAria2, onCheckedChange = { viewModel.setUseAria2(it) })
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Parallel Download Connections: ${aria2Connections.toInt()} Threads",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Slider(
-                    value = aria2Connections,
-                    onValueChange = { aria2Connections = it },
-                    valueRange = 1f..16f,
-                    steps = 14
-                )
+        SettingsCard {
+            SettingHeader(Icons.Default.Bolt, "Aria2 Accelerator", "Faster parallel segment downloads")
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(if (useAria2) "Enabled" else "Disabled", fontWeight = FontWeight.Bold, color = if (useAria2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                Switch(checked = useAria2, onCheckedChange = viewModel::setUseAria2)
             }
+            Spacer(Modifier.height(6.dp))
+            Text("Parallel connections: ${aria2Connections.toInt()}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold)
+            Slider(value = aria2Connections, onValueChange = { aria2Connections = it }, valueRange = 1f..16f, steps = 14, enabled = useAria2, modifier = Modifier.fillMaxWidth())
+        }
+
+        SettingsCard {
+            SettingHeader(Icons.Default.Block, "Smart playback", "Optional quality-of-life helpers")
+            SettingSwitch("SponsorBlock", "Skip sponsored segments when metadata is available", sponsorBlockEnabled) { sponsorBlockEnabled = it }
+            SettingSwitch("Auto-download subtitles", "Embed multilingual subtitles when available", embedSubtitles, viewModel::setEmbedSubtitles)
+        }
+
+        SettingsCard {
+            SettingHeader(Icons.Default.Security, "Custom yt-dlp arguments", "Advanced users only")
+            Spacer(Modifier.height(10.dp))
+            OutlinedTextField(
+                value = customArgsInput,
+                onValueChange = { customArgsInput = it; viewModel.setCustomArguments(it) },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 6,
+                shape = RoundedCornerShape(16.dp),
+                placeholder = { Text("--embed-chapters --write-thumbnail") },
+                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MaterialTheme.colorScheme.primary, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant)
+            )
+        }
+
+        SettingsCard {
+            SettingHeader(Icons.Default.Info, "About NovaFetch", "Version 2.0.0")
+            Spacer(Modifier.height(8.dp))
+            Text("A free, open-source media downloader and player powered by yt-dlp, FFmpeg, Aria2c and Media3.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
 
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            modifier = Modifier.fillMaxWidth().border(1.dp, NovaAqua.copy(alpha = 0.7f), RoundedCornerShape(24.dp)).clickable { uriHandler.openUri("https://github.com/Rishav7324") },
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Block, contentDescription = null, tint = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("SponsorBlock Integration", fontWeight = FontWeight.Bold)
-                            Text("Auto-skip sponsored promo segments", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                        }
-                    }
-                    Switch(checked = sponsorBlockEnabled, onCheckedChange = { sponsorBlockEnabled = it })
+            Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                BoxAvatar()
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Built by Rishav Raj", fontWeight = FontWeight.ExtraBold, color = NovaInk)
+                    Text("GitHub • @Rishav7324", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Open-source Android developer", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                 }
-
-                Divider(modifier = Modifier.padding(vertical = 12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Subtitles, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Column {
-                            Text("Auto-Download Subtitles", fontWeight = FontWeight.Bold)
-                            Text("Embed multilingual subtitles when available", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                        }
-                    }
-                    Switch(checked = embedSubtitles, onCheckedChange = { viewModel.setEmbedSubtitles(it) })
-                }
+                Icon(Icons.Default.OpenInNew, contentDescription = "Open GitHub", tint = MaterialTheme.colorScheme.primary)
             }
         }
+        Spacer(Modifier.height(6.dp))
+    }
+}
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text("Custom CLI Arguments Sandbox", fontWeight = FontWeight.Bold)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = customArgsInput,
-                    onValueChange = {
-                        customArgsInput = it
-                        viewModel.setCustomArguments(it)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    placeholder = { Text("--cookies-from-browser chrome --embed-chapters") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                    )
-                )
-            }
+@Composable
+private fun SettingsCard(content: @Composable Column.() -> Unit) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)), elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), content = content)
+    }
+}
+
+@Composable
+private fun SettingHeader(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, subtitle: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(NovaAquaSoft), contentAlignment = Alignment.Center) { Icon(icon, null, tint = NovaInk) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
         }
+    }
+}
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text("NovaFetch", fontWeight = FontWeight.Bold)
-                        Text("Version 2.0.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Powered by yt-dlp, FFmpeg, Aria2c, Jetpack Compose, and Media3 ExoPlayer. 100% Free & Open Source.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
-            }
+@Composable
+private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f).padding(end = 10.dp)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
         }
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
 
-        Spacer(modifier = Modifier.height(16.dp))
+@Composable
+private fun BoxAvatar() {
+    Box(Modifier.size(54.dp).clip(CircleShape).background(Brush.linearGradient(listOf(NovaAqua, NovaAquaSoft))), contentAlignment = Alignment.Center) {
+        Text("RR", fontWeight = FontWeight.ExtraBold, color = NovaInk)
     }
 }
