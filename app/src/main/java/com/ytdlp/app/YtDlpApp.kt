@@ -50,7 +50,7 @@ class YtDlpApp : Application() {
         }
     }
 
-    suspend fun updateEngine(): Result<Unit> = YtDlpEngine.updateEngine(this)
+    suspend fun updateEngine(): Result<Unit> = YtDlpEngine.updateEngine(this).map { }
 
     companion object {
         lateinit var instance: YtDlpApp
