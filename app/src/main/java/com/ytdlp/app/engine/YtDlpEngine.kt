@@ -35,6 +35,11 @@ object YtDlpEngine {
     @Volatile
     var isInitialized = false
         private set
+
+    @Volatile
+    var isAria2Initialized = false
+        private set
+
     var lastInitError: String? = null
         private set
 
@@ -44,15 +49,26 @@ object YtDlpEngine {
             if (isInitialized) return@withContext Result.success(Unit)
             runCatching {
                 val appContext = context.applicationContext
+                // Core yt-dlp + FFmpeg are required for normal downloads.
                 YoutubeDL.getInstance().init(appContext)
                 FFmpeg.getInstance().init(appContext)
-                Aria2c.getInstance().init(appContext)
+
+                // Aria2 is an optional accelerator. A native Aria2 failure must not
+                // make the whole yt-dlp engine unusable.
+                runCatching {
+                    Aria2c.getInstance().init(appContext)
+                    isAria2Initialized = true
+                }.onFailure {
+                    isAria2Initialized = false
+                    Log.w(TAG, "Aria2 initialization failed; falling back to yt-dlp downloader", it)
+                }
+
                 isInitialized = true
                 lastInitError = null
             }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { error ->
-                    lastInitError = error.message ?: "Unknown initialization error"
+                    lastInitError = error.message ?: error.javaClass.simpleName
                     Log.e(TAG, "Engine initialization failed", error)
                     Result.failure(error)
                 }
@@ -160,9 +176,9 @@ object YtDlpEngine {
                 addOption("--print", "after_move:filepath")
             }
 
-            if (useAria2) {
-                request.addOption("--external-downloader", "aria2c")
-                request.addOption("--external-downloader-args", "aria2c:-x 8 -s 8 -k 1M")
+            if (useAria2 && isAria2Initialized) {
+                // youtubedl-android bundles the native downloader under this name.
+                request.addOption("--downloader", "libaria2c.so")
             } else {
                 request.addOption("--concurrent-fragments", "4")
             }
