@@ -76,7 +76,7 @@ object YtDlpEngine {
                 id = videoId,
                 title = info.title.orEmpty().ifBlank { "Untitled media" },
                 uploader = info.uploader.orEmpty().ifBlank { info.extractor.orEmpty().ifBlank { "Unknown creator" } },
-                channelUrl = info.uploaderUrl.orEmpty(),
+                channelUrl = "",
                 thumbnailUrl = info.thumbnail.orEmpty(),
                 durationSeconds = (info.duration as? Number)?.toLong() ?: 0L,
                 viewCount = (info.viewCount as? Number)?.toLong() ?: 0L,
@@ -115,7 +115,7 @@ object YtDlpEngine {
                     resolution = resolution,
                     note = noteParts.joinToString(" • ").ifBlank { "Available stream" },
                     isAudioOnly = audioOnly,
-                    fileSizeApprox = (format.filesize ?: format.filesizeApprox ?: 0L).coerceAtLeast(0L),
+                    fileSizeApprox = 0L,
                     fps = (format.fps as? Number)?.toInt(),
                     vcodec = format.vcodec,
                     acodec = format.acodec
@@ -154,7 +154,6 @@ object YtDlpEngine {
                 addOption("--restrict-filenames")
                 addOption("--newline")
                 addOption("--no-playlist")
-                addOption("--no-part")
                 addOption("--concurrent-fragments", if (useAria2) "8" else "4")
             }
 
@@ -167,7 +166,7 @@ object YtDlpEngine {
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
             } else {
                 val selectedFormat = formatId.ifBlank { "bv*[height<=1080]+ba/b[height<=1080]/best" }
-                val normalizedFormat = if (selectedFormat.contains("+") || selectedFormat.contains("/") || selectedFormat.contains("[") ) {
+                val normalizedFormat = if (selectedFormat.contains("+") || selectedFormat.contains("/") || selectedFormat.contains("[")) {
                     selectedFormat
                 } else {
                     "$selectedFormat+ba/b"
@@ -187,19 +186,18 @@ object YtDlpEngine {
                     .forEach(request::addOption)
             }
 
-            var lastProgress = 0f
             var lastSpeed = ""
             var lastEta = ""
 
             YoutubeDL.getInstance().execute(request, taskId) { progress, etaSeconds, line ->
-                lastProgress = progress.coerceIn(0f, 100f)
-                Regex("""(?:at|speed)\\s+([0-9.]+(?:KiB|MiB|GiB|KB|MB|GB)/s)""")
+                val safeProgress = progress.coerceIn(0f, 100f)
+                Regex("""(?:at|speed)\s+([0-9.]+(?:KiB|MiB|GiB|KB|MB|GB)/s)""")
                     .find(line)
                     ?.groupValues
                     ?.getOrNull(1)
                     ?.let { lastSpeed = it }
                 if (etaSeconds > 0) lastEta = formatEta(etaSeconds)
-                onProgress(lastProgress, lastSpeed, lastEta, line)
+                onProgress(safeProgress, lastSpeed, lastEta, line)
             }
 
             val downloadedFile = validDir.listFiles()
