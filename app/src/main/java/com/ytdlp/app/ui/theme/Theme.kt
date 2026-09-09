@@ -10,44 +10,15 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = NovaPrimaryDark,
-    onPrimary = BackgroundDark,
-    primaryContainer = Color(0xFF234344),
-    onPrimaryContainer = TextPrimaryDark,
-    secondary = NovaSecondary,
-    onSecondary = BackgroundDark,
-    tertiary = NovaAqua,
-    background = BackgroundDark,
-    onBackground = TextPrimaryDark,
-    surface = SurfaceDark,
-    onSurface = TextPrimaryDark,
-    surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = TextSecondaryDark,
-    outline = CardBorderDark
-)
+private val DarkColorScheme = darkColorScheme(primary = NovaPrimaryDark, onPrimary = BackgroundDark, primaryContainer = Color(0xFF234344), onPrimaryContainer = TextPrimaryDark, secondary = NovaSecondary, onSecondary = BackgroundDark, tertiary = NovaAqua, background = BackgroundDark, onBackground = TextPrimaryDark, surface = SurfaceDark, onSurface = TextPrimaryDark, surfaceVariant = SurfaceVariantDark, onSurfaceVariant = TextSecondaryDark, outline = CardBorderDark)
 
-private val LightColorScheme = lightColorScheme(
-    primary = NovaAquaDeep,
-    onPrimary = androidx.compose.ui.graphics.Color.White,
-    primaryContainer = NovaAquaSoft,
-    onPrimaryContainer = NovaInk,
-    secondary = NovaAquaSoft,
-    onSecondary = NovaInk,
-    tertiary = NovaAqua,
-    background = BackgroundLight,
-    onBackground = TextPrimaryLight,
-    surface = SurfaceLight,
-    onSurface = TextPrimaryLight,
-    surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = TextSecondaryLight,
-    outline = CardBorderLight
-)
+private val LightColorScheme = lightColorScheme(primary = NovaAquaDeep, onPrimary = Color.White, primaryContainer = NovaAquaSoft, onPrimaryContainer = NovaInk, secondary = NovaAquaSoft, onSecondary = NovaInk, tertiary = NovaAqua, background = BackgroundLight, onBackground = TextPrimaryLight, surface = SurfaceLight, onSurface = TextPrimaryLight, surfaceVariant = SurfaceVariantLight, onSurfaceVariant = TextSecondaryLight, outline = CardBorderLight)
 
 @Composable
 fun YtDlpTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {
