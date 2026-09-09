@@ -26,27 +26,14 @@ android {
         }
     }
 
-    signingConfigs {
-        create("release") {
-            // Production signing must come from CI/environment secrets, never source control.
-            val keystorePath = providers.environmentVariable("NOVAFETCH_KEYSTORE_PATH").orNull
-            val storePassword = providers.environmentVariable("NOVAFETCH_KEYSTORE_PASSWORD").orNull
-            val keyAlias = providers.environmentVariable("NOVAFETCH_KEY_ALIAS").orNull
-            val keyPassword = providers.environmentVariable("NOVAFETCH_KEY_PASSWORD").orNull
-            if (!keystorePath.isNullOrBlank() && !storePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
-                storeFile = file(keystorePath)
-                this.storePassword = storePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
-            }
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            // The CI artifact is intentionally signed with Android's debug key until
+            // a real production keystore is configured through GitHub Actions secrets.
+            // This keeps the release build installable without storing credentials in git.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
