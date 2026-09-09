@@ -66,29 +66,13 @@ object YtDlpEngine {
         }
     }
 
-    suspend fun updateEngine(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
-        initMutex.withLock {
-            runCatching {
-                // youtubedl-android owns the bundled yt-dlp executable. Re-initializing
-                // refreshes/repairs its runtime without requiring a separate network API.
-                YoutubeDL.getInstance().init(context.applicationContext)
-                FFmpeg.getInstance().init(context.applicationContext)
-                runCatching {
-                    Aria2c.getInstance().init(context.applicationContext)
-                    isAria2Initialized = true
-                }.onFailure { isAria2Initialized = false }
-                isInitialized = true
-                lastInitError = null
-            }.fold(
-                onSuccess = { Result.success(Unit) },
-                onFailure = { error ->
-                    lastInitError = error.message ?: "Unable to initialize yt-dlp"
-                    Log.e(TAG, "Engine update failed", error)
-                    Result.failure(error)
-                }
-            )
-        }
-    }
+    /**
+     * Updates the bundled yt-dlp executable to the latest stable release.
+     * The actual binary update is owned by youtubedl-android's updater; this
+     * method intentionally does not just re-run init().
+     */
+    suspend fun updateEngine(context: Context): Result<String> =
+        YtDlpUpdater.updateEngine(context)
 
     fun normalizeUrl(rawUrl: String): String {
         val url = rawUrl.trim()
