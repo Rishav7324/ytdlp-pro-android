@@ -156,17 +156,15 @@ class DownloadService : Service() {
         finishOrStartNext(repository)
     }
 
-    private fun finishOrStartNext(repository: DownloadRepository) {
-        serviceScope.launch {
-            val next = repository.activeAndQueuedDownloads.first().firstOrNull {
-                it.status == DownloadStatus.QUEUED
-            }
-            if (next != null) {
-                currentJob = serviceScope.launch { processDownload(next.id) }
-            } else {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-            }
+    private suspend fun finishOrStartNext(repository: DownloadRepository) {
+        val next = repository.activeAndQueuedDownloads.first().firstOrNull {
+            it.status == DownloadStatus.QUEUED
+        }
+        if (next != null) {
+            processDownload(next.id)
+        } else {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
         }
     }
 
