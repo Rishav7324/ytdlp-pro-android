@@ -13,24 +13,34 @@ android {
         applicationId = "com.ytdlp.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "2.0.0"
+        versionCode = 23
+        versionName = "2.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")) }
     }
 
+    signingConfigs {
+        create("novafetchStable") {
+            storeFile = rootProject.file("signing/novafetch-dev.keystore")
+            storePassword = "novafetch-dev-key"
+            keyAlias = "novafetch"
+            keyPassword = "novafetch-dev-key"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("novafetchStable")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
             isMinifyEnabled = false
             isDebuggable = true
+            signingConfig = signingConfigs.getByName("novafetchStable")
         }
     }
 
