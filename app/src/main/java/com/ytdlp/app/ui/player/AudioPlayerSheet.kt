@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.background
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -67,6 +69,7 @@ import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.equalizer.EqualizerDialog
 import java.io.File
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AudioPlayerSheet(onDismiss: () -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
