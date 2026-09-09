@@ -21,7 +21,6 @@ class YtDlpApp : Application() {
         private set
     lateinit var repository: DownloadRepository
         private set
-
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _isEngineReady = MutableStateFlow(false)
     val isEngineReady: StateFlow<Boolean> = _isEngineReady.asStateFlow()
@@ -41,11 +40,7 @@ class YtDlpApp : Application() {
         appScope.launch {
             val result = YtDlpEngine.ensureInitialized(this@YtDlpApp)
             result.fold(
-                onSuccess = {
-                    _isEngineReady.value = true
-                    _initError.value = null
-                    Log.d("YtDlpApp", "yt-dlp engine is ready")
-                },
+                onSuccess = { _isEngineReady.value = true; _initError.value = null },
                 onFailure = { error ->
                     _isEngineReady.value = false
                     _initError.value = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
