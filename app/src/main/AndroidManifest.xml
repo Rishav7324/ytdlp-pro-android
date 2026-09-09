@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
-    <!-- Storage permissions for older and newer Android versions -->
+    <!-- Storage permissions for older Android versions. -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28"
@@ -24,7 +24,6 @@
     <application
         android:name=".YtDlpApp"
         android:allowBackup="true"
-        android:extractNativeLibs="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -46,7 +45,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Receive Shared URLs from YouTube, Twitter, Instagram, TikTok, Browser -->
+            <!-- Receive shared URLs from browsers and media apps. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -54,7 +53,6 @@
             </intent-filter>
         </activity>
 
-        <!-- Background Download Service with Foreground Notification -->
         <service
             android:name=".service.DownloadService"
             android:exported="false"
