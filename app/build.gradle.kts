@@ -13,44 +13,21 @@ android {
         applicationId = "com.ytdlp.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 22
-        versionName = "2.0.0"
+        versionCode = 23
+        versionName = "2.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
-
-        ndk {
-            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
-        }
-    }
-
-    signingConfigs {
-        create("release") {
-            // Production signing must come from CI/environment secrets, never source control.
-            val keystorePath = providers.environmentVariable("NOVAFETCH_KEYSTORE_PATH").orNull
-            val storePassword = providers.environmentVariable("NOVAFETCH_KEYSTORE_PASSWORD").orNull
-            val keyAlias = providers.environmentVariable("NOVAFETCH_KEY_ALIAS").orNull
-            val keyPassword = providers.environmentVariable("NOVAFETCH_KEY_PASSWORD").orNull
-            if (!keystorePath.isNullOrBlank() && !storePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
-                storeFile = file(keystorePath)
-                this.storePassword = storePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
-            }
-        }
+        vectorDrawables { useSupportLibrary = true }
+        ndk { abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")) }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+            // Public source builds use the standard debug key. Release signing can be supplied by a private CI configuration later.
+            signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {
             isMinifyEnabled = false
@@ -62,23 +39,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
-
-    kotlinOptions {
-        jvmTarget = "21"
-    }
-
-    buildFeatures {
-        compose = true
-        buildConfig = true
-    }
+    kotlinOptions { jvmTarget = "21" }
+    buildFeatures { compose = true; buildConfig = true }
 
     packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-        jniLibs {
-            useLegacyPackaging = true
-        }
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        jniLibs { useLegacyPackaging = true }
     }
 }
 
@@ -99,17 +65,14 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.coil.compose)
-
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
-
     implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.youtubedl.library)
     implementation(libs.youtubedl.ffmpeg)
     implementation(libs.youtubedl.aria2c)
-
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
 }
