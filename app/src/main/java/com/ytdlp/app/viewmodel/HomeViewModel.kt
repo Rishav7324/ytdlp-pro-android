@@ -53,9 +53,23 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = HomeUiState.Success(info)
                 },
                 onFailure = { error ->
-                    _uiState.value = HomeUiState.Error(error.message ?: "Failed to parse video info")
+                    _uiState.value = HomeUiState.Error(formatError(error))
                 }
             )
+        }
+    }
+
+    private fun formatError(error: Throwable): String {
+        val detail = generateSequence(error) { it.cause }
+            .mapNotNull { it.message?.trim()?.takeIf(String::isNotBlank) }
+            .firstOrNull { it.length >= 8 }
+
+        return when {
+            !YtDlpEngine.lastInitError.isNullOrBlank() && !YtDlpEngine.isInitialized ->
+                "yt-dlp engine could not start. ${YtDlpEngine.lastInitError}"
+            detail != null -> detail
+            error is java.net.UnknownHostException -> "No internet connection. Check your network and try again."
+            else -> "Could not read this link. Check the URL and try again."
         }
     }
 
