@@ -7,6 +7,7 @@ import android.os.IBinder
 import android.util.Log
 import com.ytdlp.app.YtDlpApp
 import com.ytdlp.app.data.local.DownloadStatus
+import com.ytdlp.app.data.repository.DownloadRepository
 import com.ytdlp.app.engine.YtDlpEngine
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -155,7 +156,7 @@ class DownloadService : Service() {
         finishOrStartNext(repository)
     }
 
-    private fun finishOrStartNext(repository: com.ytdlp.app.data.Repository) {
+    private fun finishOrStartNext(repository: DownloadRepository) {
         serviceScope.launch {
             val next = repository.activeAndQueuedDownloads.first().firstOrNull {
                 it.status == DownloadStatus.QUEUED
