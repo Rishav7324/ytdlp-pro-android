@@ -32,15 +32,11 @@ object YtDlpEngine {
     private const val TAG = "YtDlpEngine"
     private val initMutex = Mutex()
 
-    @Volatile
-    var isInitialized = false
+    @Volatile var isInitialized = false
         private set
-
-    @Volatile
-    var isAria2Initialized = false
+    @Volatile var isAria2Initialized = false
         private set
-
-    var lastInitError: String? = null
+    @Volatile var lastInitError: String? = null
         private set
 
     suspend fun ensureInitialized(context: Context): Result<Unit> = withContext(Dispatchers.IO) {
@@ -49,26 +45,21 @@ object YtDlpEngine {
             if (isInitialized) return@withContext Result.success(Unit)
             runCatching {
                 val appContext = context.applicationContext
-                // Core yt-dlp + FFmpeg are required for normal downloads.
                 YoutubeDL.getInstance().init(appContext)
                 FFmpeg.getInstance().init(appContext)
-
-                // Aria2 is an optional accelerator. A native Aria2 failure must not
-                // make the whole yt-dlp engine unusable.
                 runCatching {
                     Aria2c.getInstance().init(appContext)
                     isAria2Initialized = true
                 }.onFailure {
                     isAria2Initialized = false
-                    Log.w(TAG, "Aria2 initialization failed; falling back to yt-dlp downloader", it)
+                    Log.w(TAG, "Aria2 unavailable; using yt-dlp downloader", it)
                 }
-
                 isInitialized = true
                 lastInitError = null
             }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { error ->
-                    lastInitError = error.message ?: error.javaClass.simpleName
+                    lastInitError = error.message ?: "Engine initialization failed"
                     Log.e(TAG, "Engine initialization failed", error)
                     Result.failure(error)
                 }
@@ -109,40 +100,26 @@ object YtDlpEngine {
         )
     }
 
-    private fun mapFormats(info: YtdlVideoInfo): List<DownloadFormat> {
-        val formats = info.formats.orEmpty()
-        if (formats.isEmpty()) return emptyList()
-
-        return formats
-            .mapNotNull { format ->
-                val id = format.formatId.orEmpty()
-                if (id.isBlank()) return@mapNotNull null
-                val height = (format.height as? Number)?.toInt() ?: 0
-                val audioOnly = height <= 0
-                val extension = format.ext.orEmpty().ifBlank { "media" }
-                val resolution = if (audioOnly) "Audio" else "${height}p"
-                val noteParts = buildList {
-                    format.vcodec.orEmpty().takeIf { it.isNotBlank() }?.let(::add)
-                    format.acodec.orEmpty().takeIf { it.isNotBlank() }?.let(::add)
-                }
-                DownloadFormat(
-                    formatId = id,
-                    extension = extension,
-                    resolution = resolution,
-                    note = noteParts.joinToString(" • ").ifBlank { "Available stream" },
-                    isAudioOnly = audioOnly,
-                    fileSizeApprox = 0L,
-                    fps = (format.fps as? Number)?.toInt(),
-                    vcodec = format.vcodec,
-                    acodec = format.acodec
-                )
-            }
-            .distinctBy { it.formatId }
-            .sortedWith(
-                compareByDescending<DownloadFormat> { !it.isAudioOnly }
-                    .thenByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 }
+    private fun mapFormats(info: YtdlVideoInfo): List<DownloadFormat> = info.formats.orEmpty()
+        .mapNotNull { format ->
+            val id = format.formatId.orEmpty()
+            if (id.isBlank()) return@mapNotNull null
+            val height = (format.height as? Number)?.toInt() ?: 0
+            val audioOnly = height <= 0
+            DownloadFormat(
+                formatId = id,
+                extension = format.ext.orEmpty().ifBlank { "media" },
+                resolution = if (audioOnly) "Audio" else "${height}p",
+                note = listOfNotNull(format.vcodec, format.acodec).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Available stream" },
+                isAudioOnly = audioOnly,
+                fileSizeApprox = 0L,
+                fps = (format.fps as? Number)?.toInt(),
+                vcodec = format.vcodec,
+                acodec = format.acodec
             )
-    }
+        }
+        .distinctBy { it.formatId }
+        .sortedWith(compareByDescending<DownloadFormat> { !it.isAudioOnly }.thenByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 })
 
     suspend fun executeDownload(
         context: Context,
@@ -161,7 +138,6 @@ object YtDlpEngine {
     ): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             ensureInitialized(context).getOrThrow()
-
             val validDir = outputDir.takeIf { it.exists() || it.mkdirs() }
                 ?: context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                 ?: context.filesDir
@@ -173,15 +149,9 @@ object YtDlpEngine {
                 addOption("--restrict-filenames")
                 addOption("--newline")
                 addOption("--no-playlist")
-                addOption("--print", "after_move:filepath")
             }
-
-            if (useAria2 && isAria2Initialized) {
-                // youtubedl-android bundles the native downloader under this name.
-                request.addOption("--downloader", "libaria2c.so")
-            } else {
-                request.addOption("--concurrent-fragments", "4")
-            }
+            if (useAria2 && isAria2Initialized) request.addOption("--downloader", "libaria2c.so")
+            else request.addOption("--concurrent-fragments", "4")
 
             if (mediaType == MediaType.AUDIO) {
                 request.addOption("-f", "ba/b")
@@ -192,61 +162,28 @@ object YtDlpEngine {
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
             } else {
                 val selectedFormat = formatId.ifBlank { "bv*[height<=1080]+ba/b[height<=1080]/best" }
-                val normalizedFormat = if (
-                    selectedFormat.contains("+") ||
-                    selectedFormat.contains("/") ||
-                    selectedFormat.contains("[")
-                ) {
-                    selectedFormat
-                } else {
-                    "$selectedFormat+ba/b"
-                }
+                val normalizedFormat = if (selectedFormat.contains("+") || selectedFormat.contains("/") || selectedFormat.contains("[")) selectedFormat else "$selectedFormat+ba/b"
                 request.addOption("-f", normalizedFormat)
                 request.addOption("--merge-output-format", "mp4")
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
                 if (embedSubtitles) request.addOption("--embed-subs")
             }
-
             if (cookiesFile?.exists() == true) request.addOption("--cookies", cookiesFile.absolutePath)
-
-            if (customArgs.isNotBlank()) {
-                customArgs.trim()
-                    .split(Regex("\\s+"))
-                    .filter { it.isNotBlank() }
-                    .forEach(request::addOption)
-            }
+            if (customArgs.isNotBlank()) customArgs.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.forEach(request::addOption)
 
             var lastSpeed = ""
             var lastEta = ""
             var resolvedOutput: File? = null
-
             YoutubeDL.getInstance().execute(request, taskId) { progress, etaSeconds, line ->
                 val safeProgress = progress.coerceIn(0f, 100f)
-                Regex("""(?:at|speed)\s+([0-9.]+(?:KiB|MiB|GiB|KB|MB|GB)/s)""")
-                    .find(line)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.let { lastSpeed = it }
+                Regex("""(?:at|speed)\s+([0-9.]+(?:KiB|MiB|GiB|KB|MB|GB)/s)""").find(line)?.groupValues?.getOrNull(1)?.let { lastSpeed = it }
                 if (etaSeconds > 0) lastEta = formatEta(etaSeconds)
-
                 val candidate = line.trim().let(::File)
-                if (candidate.isAbsolute && candidate.parentFile?.absolutePath == validDir.absolutePath && candidate.isFile) {
-                    resolvedOutput = candidate
-                }
+                if (candidate.isAbsolute && candidate.parentFile?.absolutePath == validDir.absolutePath && candidate.isFile) resolvedOutput = candidate
                 onProgress(safeProgress, lastSpeed, lastEta, line)
             }
-
-            val downloadedFile = resolvedOutput?.takeIf(File::exists)
-                ?: validDir.listFiles()
-                    ?.filter { file ->
-                        file.isFile &&
-                            !file.name.endsWith(".part", ignoreCase = true) &&
-                            !file.name.endsWith(".ytdl", ignoreCase = true) &&
-                            !file.name.endsWith(".temp", ignoreCase = true)
-                    }
-                    ?.maxByOrNull(File::lastModified)
-
-            downloadedFile?.takeIf(File::exists)
+            resolvedOutput?.takeIf(File::exists)
+                ?: validDir.listFiles()?.filter { it.isFile && !it.name.endsWith(".part", true) && !it.name.endsWith(".ytdl", true) && !it.name.endsWith(".temp", true) }?.maxByOrNull(File::lastModified)
                 ?: throw YoutubeDLException("Download completed but the output file could not be resolved")
         }.fold(
             onSuccess = { Result.success(it) },
@@ -261,12 +198,10 @@ object YtDlpEngine {
         val hours = seconds / 3600
         val minutes = (seconds % 3600) / 60
         val remainingSeconds = seconds % 60
-        return if (hours > 0) String.format("%02d:%02d:%02d", hours, minutes, remainingSeconds)
-        else String.format("%02d:%02d", minutes, remainingSeconds)
+        return if (hours > 0) String.format("%02d:%02d:%02d", hours, minutes, remainingSeconds) else String.format("%02d:%02d", minutes, remainingSeconds)
     }
 
     fun cancelDownload(taskId: String) {
-        runCatching { YoutubeDL.getInstance().destroyProcessById(taskId) }
-            .onFailure { Log.w(TAG, "Failed to cancel task $taskId", it) }
+        runCatching { YoutubeDL.getInstance().destroyProcessById(taskId) }.onFailure { Log.w(TAG, "Failed to cancel task $taskId", it) }
     }
 }
