@@ -55,6 +55,8 @@ class YtDlpApp : Application() {
         }
     }
 
+    suspend fun updateEngine(): Result<Unit> = YtDlpEngine.updateEngine(this)
+
     companion object {
         lateinit var instance: YtDlpApp
             private set
