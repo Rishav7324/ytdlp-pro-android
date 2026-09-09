@@ -10,7 +10,6 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -34,8 +33,8 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = NovaPrimaryDeep,
-    onPrimary = Color.White,
+    primary = NovaAquaDeep,
+    onPrimary = androidx.compose.ui.graphics.Color.White,
     primaryContainer = NovaAquaSoft,
     onPrimaryContainer = NovaInk,
     secondary = NovaAquaSoft,
@@ -50,24 +49,14 @@ private val LightColorScheme = lightColorScheme(
     outline = CardBorderLight
 )
 
-// Alias kept local to the theme so the palette stays easy to read.
-private val NovaPrimaryDeep = NovaAquaDeep
-
 @Composable
-fun YtDlpTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
-) {
+fun YtDlpTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -79,11 +68,5 @@ fun YtDlpTheme(
             controller.isAppearanceLightNavigationBars = !darkTheme
         }
     }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = NovaShapes,
-        content = content
-    )
+    MaterialTheme(colorScheme = colorScheme, typography = Typography, shapes = NovaShapes, content = content)
 }
