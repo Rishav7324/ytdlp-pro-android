@@ -122,7 +122,10 @@ object YtDlpEngine {
                 )
             }
             .distinctBy { it.formatId }
-            .sortedWith(compareByDescending<DownloadFormat> { !it.isAudioOnly }.thenByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 })
+            .sortedWith(
+                compareByDescending<DownloadFormat> { !it.isAudioOnly }
+                    .thenByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 }
+            )
     }
 
     suspend fun executeDownload(
@@ -154,7 +157,14 @@ object YtDlpEngine {
                 addOption("--restrict-filenames")
                 addOption("--newline")
                 addOption("--no-playlist")
-                addOption("--concurrent-fragments", if (useAria2) "8" else "4")
+                addOption("--print", "after_move:filepath")
+            }
+
+            if (useAria2) {
+                request.addOption("--external-downloader", "aria2c")
+                request.addOption("--external-downloader-args", "aria2c:-x 8 -s 8 -k 1M")
+            } else {
+                request.addOption("--concurrent-fragments", "4")
             }
 
             if (mediaType == MediaType.AUDIO) {
@@ -166,7 +176,11 @@ object YtDlpEngine {
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
             } else {
                 val selectedFormat = formatId.ifBlank { "bv*[height<=1080]+ba/b[height<=1080]/best" }
-                val normalizedFormat = if (selectedFormat.contains("+") || selectedFormat.contains("/") || selectedFormat.contains("[")) {
+                val normalizedFormat = if (
+                    selectedFormat.contains("+") ||
+                    selectedFormat.contains("/") ||
+                    selectedFormat.contains("[")
+                ) {
                     selectedFormat
                 } else {
                     "$selectedFormat+ba/b"
@@ -188,6 +202,7 @@ object YtDlpEngine {
 
             var lastSpeed = ""
             var lastEta = ""
+            var resolvedOutput: File? = null
 
             YoutubeDL.getInstance().execute(request, taskId) { progress, etaSeconds, line ->
                 val safeProgress = progress.coerceIn(0f, 100f)
@@ -197,17 +212,23 @@ object YtDlpEngine {
                     ?.getOrNull(1)
                     ?.let { lastSpeed = it }
                 if (etaSeconds > 0) lastEta = formatEta(etaSeconds)
+
+                val candidate = line.trim().let(::File)
+                if (candidate.isAbsolute && candidate.parentFile?.absolutePath == validDir.absolutePath && candidate.isFile) {
+                    resolvedOutput = candidate
+                }
                 onProgress(safeProgress, lastSpeed, lastEta, line)
             }
 
-            val downloadedFile = validDir.listFiles()
-                ?.filter { file ->
-                    file.isFile &&
-                        !file.name.endsWith(".part", ignoreCase = true) &&
-                        !file.name.endsWith(".ytdl", ignoreCase = true) &&
-                        !file.name.endsWith(".temp", ignoreCase = true)
-                }
-                ?.maxByOrNull(File::lastModified)
+            val downloadedFile = resolvedOutput?.takeIf(File::exists)
+                ?: validDir.listFiles()
+                    ?.filter { file ->
+                        file.isFile &&
+                            !file.name.endsWith(".part", ignoreCase = true) &&
+                            !file.name.endsWith(".ytdl", ignoreCase = true) &&
+                            !file.name.endsWith(".temp", ignoreCase = true)
+                    }
+                    ?.maxByOrNull(File::lastModified)
 
             downloadedFile?.takeIf(File::exists)
                 ?: throw YoutubeDLException("Download completed but the output file could not be resolved")
