@@ -15,6 +15,7 @@ material3 = "1.2.1"
 materialIconsExtended = "1.6.8"
 youtubedlAndroid = "0.17.3"
 media3 = "1.4.1"
+backdrop = "1.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -29,6 +30,9 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
+
+# Liquid Glass / Backdrop — Kyant0 AndroidLiquidGlass
+kyant-backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
 
 # Data & Room
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
