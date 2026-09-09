@@ -35,6 +35,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -71,6 +72,14 @@ fun SettingsScreen(
         isInputInitialized = true
     }
 
+    LaunchedEffect(updateState) {
+        when (val state = updateState) {
+            is UpdateState.Success -> Toast.makeText(context, "yt-dlp: ${state.version}", Toast.LENGTH_LONG).show()
+            is UpdateState.Error -> Toast.makeText(context, "yt-dlp update failed: ${state.message}", Toast.LENGTH_LONG).show()
+            else -> Unit
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -85,7 +94,6 @@ fun SettingsScreen(
             fontWeight = FontWeight.Bold
         )
 
-        // Engine Updater Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -123,7 +131,6 @@ fun SettingsScreen(
             }
         }
 
-        // Aria2c Accelerator Tuning
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -158,7 +165,6 @@ fun SettingsScreen(
             }
         }
 
-        // Pro Feature Toggles (SponsorBlock & Subtitles)
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -201,7 +207,6 @@ fun SettingsScreen(
             }
         }
 
-        // Custom yt-dlp CLI Arguments Sandbox
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -231,7 +236,6 @@ fun SettingsScreen(
             }
         }
 
-        // About & Version
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(18.dp),
@@ -242,8 +246,8 @@ fun SettingsScreen(
                     Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("yt-dlp Pro for Android", fontWeight = FontWeight.Bold)
-                        Text("Version 1.0.8 (Ultimate Edition)", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        Text("NovaFetch", fontWeight = FontWeight.Bold)
+                        Text("Version 2.0.0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
