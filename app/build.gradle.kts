@@ -7,23 +7,14 @@ plugins {
 
 android {
     namespace = "com.ytdlp.app"
-    compileSdk = 34
-
-    signingConfigs {
-        create("release") {
-            storeFile = file("release.keystore")
-            storePassword = "ytdlppass"
-            keyAlias = "ytdlp"
-            keyPassword = "ytdlppass"
-        }
-    }
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.ytdlp.app"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 21
-        versionName = "1.5.0"
+        targetSdk = 35
+        versionCode = 22
+        versionName = "2.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -35,9 +26,26 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            // Production signing must come from CI/environment secrets, never source control.
+            val keystorePath = providers.environmentVariable("NOVAFETCH_KEYSTORE_PATH").orNull
+            val storePassword = providers.environmentVariable("NOVAFETCH_KEYSTORE_PASSWORD").orNull
+            val keyAlias = providers.environmentVariable("NOVAFETCH_KEY_ALIAS").orNull
+            val keyPassword = providers.environmentVariable("NOVAFETCH_KEY_PASSWORD").orNull
+            if (!keystorePath.isNullOrBlank() && !storePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
+                storeFile = file(keystorePath)
+                this.storePassword = storePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -46,7 +54,6 @@ android {
         }
         debug {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
             isDebuggable = true
         }
     }
@@ -76,14 +83,12 @@ android {
 }
 
 dependencies {
-    // AndroidX & Kotlin Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.android)
 
-    // Jetpack Compose & Material 3
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -93,23 +98,18 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
-    // Image loading with Coil
     implementation(libs.coil.compose)
 
-    // Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
-    // Preferences DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // youtubedl-android (yt-dlp wrapper + ffmpeg + aria2c)
     implementation(libs.youtubedl.library)
     implementation(libs.youtubedl.ffmpeg)
     implementation(libs.youtubedl.aria2c)
 
-    // Media3 (Media playback)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
 }

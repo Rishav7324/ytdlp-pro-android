@@ -2,34 +2,34 @@ package com.ytdlp.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary Modern Neon Accents
-val PrimaryIndigo = Color(0xFF6366F1)
-val PrimaryIndigoDark = Color(0xFF4F46E5)
-val SecondaryTeal = Color(0xFF14B8A6)
-val TertiaryPurple = Color(0xFF8B5CF6)
-val AccentPink = Color(0xFFEC4899)
-val AccentOrange = Color(0xFFF97316)
-val AccentGreen = Color(0xFF10B981)
+// NovaFetch brand — restrained indigo/violet with a single electric accent.
+val NovaPrimary = Color(0xFF7C5CFF)
+val NovaPrimaryDark = Color(0xFF6242E8)
+val NovaSecondary = Color(0xFF22D3EE)
+val NovaTertiary = Color(0xFFA78BFA)
+
+val AccentGreen = Color(0xFF22C55E)
 val AccentRed = Color(0xFFEF4444)
-val AccentCyan = Color(0xFF06B6D4)
+val AccentOrange = Color(0xFFF59E0B)
 
-// Dark / OLED Palette
-val BackgroundDark = Color(0xFF0B0F19)
-val SurfaceDark = Color(0xFF111827)
-val SurfaceVariantDark = Color(0xFF1F2937)
-val CardBorderDark = Color(0xFF374151)
-val TextPrimaryDark = Color(0xFFF9FAFB)
-val TextSecondaryDark = Color(0xFF9CA3AF)
+// Dark / OLED palette.
+val BackgroundDark = Color(0xFF09090B)
+val SurfaceDark = Color(0xFF111114)
+val SurfaceVariantDark = Color(0xFF1A1A1F)
+val CardBorderDark = Color(0xFF2A2A31)
+val TextPrimaryDark = Color(0xFFF5F5F7)
+val TextSecondaryDark = Color(0xFFA1A1AA)
 
-// Light Palette
-val BackgroundLight = Color(0xFFF8FAFC)
+// Light palette.
+val BackgroundLight = Color(0xFFF7F7FA)
 val SurfaceLight = Color(0xFFFFFFFF)
-val SurfaceVariantLight = Color(0xFFF1F5F9)
-val TextPrimaryLight = Color(0xFF0F172A)
-val TextSecondaryLight = Color(0xFF64748B)
+val SurfaceVariantLight = Color(0xFFF0F0F5)
+val CardBorderLight = Color(0xFFE4E4EA)
+val TextPrimaryLight = Color(0xFF18181B)
+val TextSecondaryLight = Color(0xFF71717A)
 
-// Brand Gradients
-val YouTubeRed = Color(0xFFFF0000)
+// Platform accents retained for source attribution chips.
+val YouTubeRed = Color(0xFFFF0033)
 val InstagramPink = Color(0xFFE1306C)
 val TikTokCyan = Color(0xFF00F2FE)
 val TwitterBlue = Color(0xFF1DA1F2)

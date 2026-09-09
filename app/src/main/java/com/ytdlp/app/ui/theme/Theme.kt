@@ -16,39 +16,43 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryIndigo,
-    onPrimary = BackgroundDark,
-    primaryContainer = PrimaryIndigoDark,
+    primary = NovaPrimary,
+    onPrimary = ColorOnPrimaryDark,
+    primaryContainer = NovaPrimaryContainerDark,
     onPrimaryContainer = TextPrimaryDark,
-    secondary = SecondaryTeal,
-    onSecondary = BackgroundDark,
+    secondary = NovaSecondary,
+    onSecondary = ColorOnSecondaryDark,
+    tertiary = NovaTertiary,
     background = BackgroundDark,
     onBackground = TextPrimaryDark,
     surface = SurfaceDark,
     onSurface = TextPrimaryDark,
     surfaceVariant = SurfaceVariantDark,
-    onSurfaceVariant = TextSecondaryDark
+    onSurfaceVariant = TextSecondaryDark,
+    outline = CardBorderDark
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = PrimaryIndigo,
-    onPrimary = SurfaceLight,
-    primaryContainer = PrimaryIndigo.copy(alpha = 0.2f),
+    primary = NovaPrimaryDark,
+    onPrimary = ColorOnPrimaryLight,
+    primaryContainer = NovaPrimaryContainerLight,
     onPrimaryContainer = TextPrimaryLight,
-    secondary = SecondaryTeal,
-    onSecondary = SurfaceLight,
+    secondary = NovaSecondary,
+    onSecondary = ColorOnSecondaryLight,
+    tertiary = NovaTertiary,
     background = BackgroundLight,
     onBackground = TextPrimaryLight,
     surface = SurfaceLight,
     onSurface = TextPrimaryLight,
     surfaceVariant = SurfaceVariantLight,
-    onSurfaceVariant = TextSecondaryLight
+    onSurfaceVariant = TextSecondaryLight,
+    outline = CardBorderLight
 )
 
 @Composable
 fun YtDlpTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -65,13 +69,23 @@ fun YtDlpTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
             window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = NovaShapes,
         content = content
     )
 }
+
+private val ColorOnPrimaryDark = BackgroundDark
+private val ColorOnSecondaryDark = BackgroundDark
+private val NovaPrimaryContainerDark = Color(0xFF241C4A)
+private val ColorOnPrimaryLight = Color.White
+private val ColorOnSecondaryLight = BackgroundDark
+private val NovaPrimaryContainerLight = Color(0xFFE7E0FF)

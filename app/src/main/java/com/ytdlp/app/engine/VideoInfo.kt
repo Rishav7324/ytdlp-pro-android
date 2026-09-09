@@ -17,10 +17,10 @@ data class VideoInfo(
 data class DownloadFormat(
     val formatId: String,
     val extension: String,
-    val resolution: String, // e.g. "1080p", "720p", "Audio Only"
+    val resolution: String,
     val note: String,
     val isAudioOnly: Boolean = false,
-    val fileSizeApprox: Long = 0,
+    val fileSizeApprox: Long = 0L,
     val fps: Int? = null,
     val vcodec: String? = null,
     val acodec: String? = null
