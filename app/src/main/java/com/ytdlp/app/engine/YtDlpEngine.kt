@@ -16,31 +16,23 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-data class VideoInfo(
-    val url: String,
-    val id: String,
-    val title: String,
-    val uploader: String,
-    val thumbnailUrl: String,
-    val durationSeconds: Long,
-    val viewCount: Long = 0,
-    val description: String = "",
-    val extractor: String = "",
-    val formats: List<DownloadFormat> = emptyList()
-)
-
-data class DownloadFormat(
+data class EngineFormat(
     val formatId: String,
     val extension: String,
     val resolution: String,
     val note: String,
-    val isAudioOnly: Boolean
+    val isAudioOnly: Boolean,
+    val fileSizeApprox: Long = 0L,
+    val fps: Int? = null,
+    val vcodec: String? = null,
+    val acodec: String? = null
 )
 
 object YtDlpEngine {
     private const val TAG = "YtDlpEngine"
     private val initMutex = Mutex()
 
+    @Volatile
     var isInitialized = false
         private set
     var lastInitError: String? = null
@@ -84,12 +76,13 @@ object YtDlpEngine {
                 id = videoId,
                 title = info.title.orEmpty().ifBlank { "Untitled media" },
                 uploader = info.uploader.orEmpty().ifBlank { info.extractor.orEmpty().ifBlank { "Unknown creator" } },
+                channelUrl = info.uploaderUrl.orEmpty(),
                 thumbnailUrl = info.thumbnail.orEmpty(),
                 durationSeconds = (info.duration as? Number)?.toLong() ?: 0L,
                 viewCount = (info.viewCount as? Number)?.toLong() ?: 0L,
                 description = info.description.orEmpty(),
                 extractor = info.extractor.orEmpty(),
-                formats = buildQualityPresets()
+                formats = mapFormats(info)
             )
         }.fold(
             onSuccess = { Result.success(it) },
@@ -100,15 +93,37 @@ object YtDlpEngine {
         )
     }
 
-    private fun buildQualityPresets(): List<DownloadFormat> = listOf(
-        DownloadFormat("bv*[height<=2160]+ba/b[height<=2160]/best", "mp4", "4K • 2160p", "Ultra HD", false),
-        DownloadFormat("bv*[height<=1440]+ba/b[height<=1440]/best", "mp4", "1440p", "2K quality", false),
-        DownloadFormat("bv*[height<=1080]+ba/b[height<=1080]/best", "mp4", "1080p", "Full HD • Recommended", false),
-        DownloadFormat("bv*[height<=720]+ba/b[height<=720]/best", "mp4", "720p", "HD • Fast download", false),
-        DownloadFormat("bv*[height<=480]+ba/b[height<=480]/best", "mp4", "480p", "SD • Data saver", false),
-        DownloadFormat("ba/b", "mp3", "MP3", "Best available audio → MP3", true),
-        DownloadFormat("ba/b", "m4a", "M4A", "Native AAC audio", true)
-    )
+    private fun mapFormats(info: YtdlVideoInfo): List<DownloadFormat> {
+        val formats = info.formats.orEmpty()
+        if (formats.isEmpty()) return emptyList()
+
+        return formats
+            .mapNotNull { format ->
+                val id = format.formatId.orEmpty()
+                if (id.isBlank()) return@mapNotNull null
+                val height = (format.height as? Number)?.toInt() ?: 0
+                val audioOnly = height <= 0
+                val extension = format.ext.orEmpty().ifBlank { "media" }
+                val resolution = if (audioOnly) "Audio" else "${height}p"
+                val noteParts = buildList {
+                    format.vcodec.orEmpty().takeIf { it.isNotBlank() }?.let(::add)
+                    format.acodec.orEmpty().takeIf { it.isNotBlank() }?.let(::add)
+                }
+                DownloadFormat(
+                    formatId = id,
+                    extension = extension,
+                    resolution = resolution,
+                    note = noteParts.joinToString(" • ").ifBlank { "Available stream" },
+                    isAudioOnly = audioOnly,
+                    fileSizeApprox = (format.filesize ?: format.filesizeApprox ?: 0L).coerceAtLeast(0L),
+                    fps = (format.fps as? Number)?.toInt(),
+                    vcodec = format.vcodec,
+                    acodec = format.acodec
+                )
+            }
+            .distinctBy { it.formatId }
+            .sortedWith(compareByDescending<DownloadFormat> { !it.isAudioOnly }.thenByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 })
+    }
 
     suspend fun executeDownload(
         context: Context,
@@ -132,14 +147,15 @@ object YtDlpEngine {
                 ?: context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
                 ?: context.filesDir
             val normalized = normalizeUrl(url)
-            val outputTemplate = "${validDir.absolutePath}/%(title)s [%(id)s].%(ext)s"
+            val outputTemplate = "${validDir.absolutePath}/%(title).180B [%(id)s].%(ext)s"
             val request = YoutubeDLRequest(normalized).apply {
                 addOption("-o", outputTemplate)
                 addOption("--no-mtime")
                 addOption("--restrict-filenames")
-                addOption("--concurrent-fragments", if (useAria2) "8" else "4")
                 addOption("--newline")
                 addOption("--no-playlist")
+                addOption("--no-part")
+                addOption("--concurrent-fragments", if (useAria2) "8" else "4")
             }
 
             if (mediaType == MediaType.AUDIO) {
@@ -150,8 +166,13 @@ object YtDlpEngine {
                 request.addOption("--add-metadata")
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
             } else {
-                val finalFormat = formatId.ifBlank { "bv*[height<=1080]+ba/b[height<=1080]/best" }
-                request.addOption("-f", if (finalFormat.contains("+") || finalFormat.contains("/")) finalFormat else "$finalFormat+bv+ba/best")
+                val selectedFormat = formatId.ifBlank { "bv*[height<=1080]+ba/b[height<=1080]/best" }
+                val normalizedFormat = if (selectedFormat.contains("+") || selectedFormat.contains("/") || selectedFormat.contains("[") ) {
+                    selectedFormat
+                } else {
+                    "$selectedFormat+ba/b"
+                }
+                request.addOption("-f", normalizedFormat)
                 request.addOption("--merge-output-format", "mp4")
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
                 if (embedSubtitles) request.addOption("--embed-subs")
@@ -159,33 +180,38 @@ object YtDlpEngine {
 
             if (cookiesFile?.exists() == true) request.addOption("--cookies", cookiesFile.absolutePath)
 
-            // Keep custom arguments opt-in and intentionally simple; structured settings should be preferred for new features.
             if (customArgs.isNotBlank()) {
-                customArgs.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.forEach(request::addOption)
+                customArgs.trim()
+                    .split(Regex("\\s+"))
+                    .filter { it.isNotBlank() }
+                    .forEach(request::addOption)
             }
 
             var lastProgress = 0f
             var lastSpeed = ""
             var lastEta = ""
-            var completedFile: File? = null
 
             YoutubeDL.getInstance().execute(request, taskId) { progress, etaSeconds, line ->
                 lastProgress = progress.coerceIn(0f, 100f)
-                Regex("""(?:at|speed)\\s+([0-9.]+(?:KiB|MiB|GiB|KB|MB|GB)/s)""").find(line)?.groupValues?.getOrNull(1)?.let { lastSpeed = it }
+                Regex("""(?:at|speed)\\s+([0-9.]+(?:KiB|MiB|GiB|KB|MB|GB)/s)""")
+                    .find(line)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.let { lastSpeed = it }
                 if (etaSeconds > 0) lastEta = formatEta(etaSeconds)
-                if (line.contains("Destination:") || line.contains("Merging formats into")) {
-                    completedFile = outputDir.listFiles()?.maxByOrNull(File::lastModified)
-                }
                 onProgress(lastProgress, lastSpeed, lastEta, line)
             }
 
-            completedFile = completedFile
-                ?.takeIf(File::exists)
-                ?: validDir.listFiles()
-                    ?.filter { it.isFile && !it.name.endsWith(".part") && !it.name.endsWith(".ytdl") }
-                    ?.maxByOrNull(File::lastModified)
+            val downloadedFile = validDir.listFiles()
+                ?.filter { file ->
+                    file.isFile &&
+                        !file.name.endsWith(".part", ignoreCase = true) &&
+                        !file.name.endsWith(".ytdl", ignoreCase = true) &&
+                        !file.name.endsWith(".temp", ignoreCase = true)
+                }
+                ?.maxByOrNull(File::lastModified)
 
-            completedFile?.takeIf(File::exists)
+            downloadedFile?.takeIf(File::exists)
                 ?: throw YoutubeDLException("Download completed but the output file could not be resolved")
         }.fold(
             onSuccess = { Result.success(it) },
