@@ -16,6 +16,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+// Keep theme constants above the color schemes so Kotlin initializes them before use.
+private val ColorOnPrimaryDark = BackgroundDark
+private val ColorOnSecondaryDark = BackgroundDark
+private val NovaPrimaryContainerDark = Color(0xFF241C4A)
+private val ColorOnPrimaryLight = Color.White
+private val ColorOnSecondaryLight = BackgroundDark
+private val NovaPrimaryContainerLight = Color(0xFFE7E0FF)
+
 private val DarkColorScheme = darkColorScheme(
     primary = NovaPrimary,
     onPrimary = ColorOnPrimaryDark,
@@ -84,10 +92,3 @@ fun YtDlpTheme(
         content = content
     )
 }
-
-private val ColorOnPrimaryDark = BackgroundDark
-private val ColorOnSecondaryDark = BackgroundDark
-private val NovaPrimaryContainerDark = Color(0xFF241C4A)
-private val ColorOnPrimaryLight = Color.White
-private val ColorOnSecondaryLight = BackgroundDark
-private val NovaPrimaryContainerLight = Color(0xFFE7E0FF)
