@@ -142,8 +142,10 @@ fun SettingsScreen(viewModel: SettingsViewModel = viewModel()) {
 }
 
 @Composable
-private fun SettingsCard(content: @Composable Column.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f)), elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) { Column(Modifier.fillMaxWidth().padding(16.dp), content = content) }
+private fun SettingsCard(content: @Composable () -> Unit) {
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = .96f)), elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) { content() }
+    }
 }
 
 @Composable
