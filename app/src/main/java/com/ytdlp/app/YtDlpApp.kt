@@ -21,6 +21,7 @@ class YtDlpApp : Application() {
         private set
     lateinit var repository: DownloadRepository
         private set
+
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _isEngineReady = MutableStateFlow(false)
     val isEngineReady: StateFlow<Boolean> = _isEngineReady.asStateFlow()
@@ -30,12 +31,14 @@ class YtDlpApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        // Keep application startup lightweight. The yt-dlp/FFmpeg/Aria2 native
+        // stack is initialized only when a download or metadata request needs it.
         database = AppDatabase.getInstance(this)
         preferences = AppPreferences(this)
         repository = DownloadRepository(database.downloadDao(), preferences)
-        initEngine()
     }
 
+    /** Explicitly initialize the media engine from a feature that needs it. */
     fun initEngine() {
         appScope.launch {
             val result = YtDlpEngine.ensureInitialized(this@YtDlpApp)
