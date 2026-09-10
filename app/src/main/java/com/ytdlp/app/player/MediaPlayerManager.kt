@@ -27,9 +27,9 @@ class MediaPlayerManager private constructor(context: Context) {
     private val appContext = context.applicationContext
 
     /**
-     * Do not construct ExoPlayer during application/navigation composition.
-     * Some devices/OEM Media3 integrations can fail while the player is being
-     * created; playback should not prevent the rest of NovaFetch from opening.
+     * Keep ExoPlayer out of application/navigation startup. It is created only
+     * when a feature actually needs playback, which avoids device-specific
+     * Media3 initialization crashes taking down the whole app.
      */
     val player: ExoPlayer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         ExoPlayer.Builder(appContext).build().also(::attachPlayerListener)
@@ -37,37 +37,26 @@ class MediaPlayerManager private constructor(context: Context) {
 
     private val _currentMedia = MutableStateFlow<DownloadEntity?>(null)
     val currentMedia: StateFlow<DownloadEntity?> = _currentMedia.asStateFlow()
-
     private val _queue = MutableStateFlow<List<DownloadEntity>>(emptyList())
     val queue: StateFlow<List<DownloadEntity>> = _queue.asStateFlow()
-
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
-
     private val _currentPosition = MutableStateFlow(0L)
     val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
-
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
-
     private val _playbackSpeed = MutableStateFlow(1.0f)
     val playbackSpeed: StateFlow<Float> = _playbackSpeed.asStateFlow()
-
     private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
     val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
-
     private val _isShuffleEnabled = MutableStateFlow(false)
     val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
-
     private val _isVideoExpanded = MutableStateFlow(false)
     val isVideoExpanded: StateFlow<Boolean> = _isVideoExpanded.asStateFlow()
-
     private val _isAudioSheetOpen = MutableStateFlow(false)
     val isAudioSheetOpen: StateFlow<Boolean> = _isAudioSheetOpen.asStateFlow()
-
     private val _loopPointA = MutableStateFlow<Long?>(null)
     val loopPointA: StateFlow<Long?> = _loopPointA.asStateFlow()
-
     private val _loopPointB = MutableStateFlow<Long?>(null)
     val loopPointB: StateFlow<Long?> = _loopPointB.asStateFlow()
 
@@ -84,9 +73,7 @@ class MediaPlayerManager private constructor(context: Context) {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) {
                     _duration.value = player.duration.coerceAtLeast(0L)
-                    runCatching {
-                        AudioFxManager.instance.initAudioEffects(player.audioSessionId)
-                    }
+                    runCatching { AudioFxManager.instance.initAudioEffects(player.audioSessionId) }
                 } else if (state == Player.STATE_ENDED) {
                     playNext()
                 }
@@ -105,13 +92,9 @@ class MediaPlayerManager private constructor(context: Context) {
                 val pos = player.currentPosition.coerceAtLeast(0L)
                 _currentPosition.value = pos
                 _duration.value = player.duration.coerceAtLeast(0L)
-
                 val a = _loopPointA.value
                 val b = _loopPointB.value
-                if (a != null && b != null && b > a && pos >= b) {
-                    player.seekTo(a)
-                }
-
+                if (a != null && b != null && b > a && pos >= b) player.seekTo(a)
                 delay(200)
             }
         }
@@ -129,16 +112,11 @@ class MediaPlayerManager private constructor(context: Context) {
             Uri.fromFile(file)
         } else if (entity.url.startsWith("http://") || entity.url.startsWith("https://")) {
             Uri.parse(entity.url)
-        } else {
-            return
-        }
+        } else return
 
         _currentMedia.value = entity
-        if (playlist.isNotEmpty()) {
-            _queue.value = playlist
-        } else if (!_queue.value.contains(entity)) {
-            _queue.value = listOf(entity) + _queue.value
-        }
+        if (playlist.isNotEmpty()) _queue.value = playlist
+        else if (!_queue.value.contains(entity)) _queue.value = listOf(entity) + _queue.value
 
         clearAbLoop()
         player.setMediaItem(MediaItem.fromUri(uri))
@@ -158,18 +136,15 @@ class MediaPlayerManager private constructor(context: Context) {
         val q = _queue.value
         val current = _currentMedia.value ?: return
         val idx = q.indexOfFirst { it.id == current.id }
-        if (idx != -1 && idx + 1 < q.size) {
-            playMedia(q[idx + 1], q, openFullscreenIfVideo = false)
-        } else if (_repeatMode.value == Player.REPEAT_MODE_ALL && q.isNotEmpty()) {
-            playMedia(q[0], q, openFullscreenIfVideo = false)
-        }
+        if (idx != -1 && idx + 1 < q.size) playMedia(q[idx + 1], q, false)
+        else if (_repeatMode.value == Player.REPEAT_MODE_ALL && q.isNotEmpty()) playMedia(q[0], q, false)
     }
 
     fun playPrevious() {
         val q = _queue.value
         val current = _currentMedia.value ?: return
         val idx = q.indexOfFirst { it.id == current.id }
-        if (idx > 0) playMedia(q[idx - 1], q, openFullscreenIfVideo = false) else seekTo(0L)
+        if (idx > 0) playMedia(q[idx - 1], q, false) else seekTo(0L)
     }
 
     fun toggleShuffle() {
@@ -182,12 +157,12 @@ class MediaPlayerManager private constructor(context: Context) {
     }
 
     fun seekTo(positionMs: Long) {
-        player.seekTo(positionMs.coerceIn(0L, player.duration.coerceAtLeast(0L)))
-        _currentPosition.value = positionMs
+        val target = positionMs.coerceIn(0L, player.duration.coerceAtLeast(0L))
+        player.seekTo(target)
+        _currentPosition.value = target
     }
 
     fun seekForward(deltaMs: Long = 10000L) = seekTo(player.currentPosition + deltaMs)
-
     fun seekRewind(deltaMs: Long = 10000L) = seekTo(player.currentPosition - deltaMs)
 
     fun setSpeed(speed: Float) {
@@ -205,9 +180,7 @@ class MediaPlayerManager private constructor(context: Context) {
         _repeatMode.value = nextMode
     }
 
-    fun setLoopPointA() {
-        _loopPointA.value = player.currentPosition
-    }
+    fun setLoopPointA() { _loopPointA.value = player.currentPosition }
 
     fun setLoopPointB() {
         val a = _loopPointA.value
@@ -219,29 +192,21 @@ class MediaPlayerManager private constructor(context: Context) {
         _loopPointB.value = null
     }
 
-    fun setVideoExpanded(expanded: Boolean) {
-        _isVideoExpanded.value = expanded
-    }
-
-    fun setAudioSheetOpen(open: Boolean) {
-        _isAudioSheetOpen.value = open
-    }
+    fun setVideoExpanded(expanded: Boolean) { _isVideoExpanded.value = expanded }
+    fun setAudioSheetOpen(open: Boolean) { _isAudioSheetOpen.value = open }
 
     fun closePlayer() {
-        if (::player.isInitialized) {
-            player.stop()
-            AudioFxManager.instance.release()
-        }
+        player.stop()
         _currentMedia.value = null
         _isVideoExpanded.value = false
         _isAudioSheetOpen.value = false
         clearAbLoop()
+        AudioFxManager.instance.release()
         stopProgressTracking()
     }
 
     companion object {
-        @Volatile
-        private var instance: MediaPlayerManager? = null
+        @Volatile private var instance: MediaPlayerManager? = null
 
         fun getInstance(context: Context): MediaPlayerManager {
             return instance ?: synchronized(this) {
