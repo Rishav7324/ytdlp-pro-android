@@ -28,8 +28,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.browser.WebBrowserScreen
 import com.ytdlp.app.ui.components.LiquidGlassNavigationBar
@@ -38,6 +36,7 @@ import com.ytdlp.app.ui.player.MiniPlayerBar
 import com.ytdlp.app.ui.player.VideoPlayerView
 import com.ytdlp.app.ui.screens.HomeScreen
 import com.ytdlp.app.ui.screens.LibraryScreen
+import com.ytdlp.app.ui.screens.LegalScreen
 import com.ytdlp.app.ui.screens.QueueScreen
 import com.ytdlp.app.ui.screens.SettingsScreen
 import com.ytdlp.app.viewmodel.HomeViewModel
@@ -48,6 +47,7 @@ sealed class Screen(val route: String, val title: String) {
     object Queue : Screen("queue", "Queue")
     object Library : Screen("library", "Library")
     object Settings : Screen("settings", "Settings")
+    object Legal : Screen("legal", "Legal")
 }
 
 val navItems = listOf(Screen.Home, Screen.Browser, Screen.Queue, Screen.Library, Screen.Settings)
@@ -62,7 +62,6 @@ fun AppNavigation(navController: NavHostController = rememberNavController(), sh
     val currentMedia by playerManager.currentMedia.collectAsState()
     val isVideoExpanded by playerManager.isVideoExpanded.collectAsState()
     val isAudioSheetOpen by playerManager.isAudioSheetOpen.collectAsState()
-    val contentBackdrop = rememberLayerBackdrop()
 
     androidx.compose.runtime.LaunchedEffect(sharedUrl) {
         if (!sharedUrl.isNullOrBlank()) {
@@ -72,58 +71,55 @@ fun AppNavigation(navController: NavHostController = rememberNavController(), sh
     }
 
     Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize().layerBackdrop(contentBackdrop)) {
-            AnimatedContent(
-                targetState = currentDestination ?: Screen.Home.route,
-                modifier = Modifier.fillMaxSize().padding(bottom = 104.dp),
-                transitionSpec = {
-                    (fadeIn(tween(220, easing = FastOutSlowInEasing)) + slideInVertically(initialOffsetY = { it / 30 })) togetherWith
-                        (fadeOut(tween(150)) + slideOutVertically(targetOffsetY = { -it / 30 }))
-                },
-                label = "navigation-transition"
-            ) { _ ->
-                NavHost(navController = navController, startDestination = Screen.Home.route, modifier = Modifier.fillMaxSize()) {
-                    composable(Screen.Home.route) {
-                        HomeScreen(homeViewModel, onNavigateToQueue = { navController.navigate(Screen.Queue.route) }, onNavigateToBrowser = { navController.navigate(Screen.Browser.route) })
-                    }
-                    composable(Screen.Browser.route) {
-                        WebBrowserScreen(onDownloadUrl = { url ->
-                            homeViewModel.onUrlChanged(url)
-                            homeViewModel.parseUrl(url)
-                            navController.navigate(Screen.Home.route) { launchSingleTop = true }
-                        })
-                    }
-                    composable(Screen.Queue.route) { QueueScreen() }
-                    composable(Screen.Library.route) { LibraryScreen() }
-                    composable(Screen.Settings.route) { SettingsScreen() }
+        AnimatedContent(
+            targetState = currentDestination ?: Screen.Home.route,
+            modifier = Modifier.fillMaxSize().padding(bottom = 104.dp),
+            transitionSpec = {
+                (fadeIn(tween(220, easing = FastOutSlowInEasing)) + slideInVertically(initialOffsetY = { it / 30 })) togetherWith
+                    (fadeOut(tween(150)) + slideOutVertically(targetOffsetY = { -it / 30 }))
+            },
+            label = "navigation-transition"
+        ) { _ ->
+            NavHost(navController = navController, startDestination = Screen.Home.route, modifier = Modifier.fillMaxSize()) {
+                composable(Screen.Home.route) {
+                    HomeScreen(homeViewModel, onNavigateToQueue = { navController.navigate(Screen.Queue.route) }, onNavigateToBrowser = { navController.navigate(Screen.Browser.route) })
                 }
+                composable(Screen.Browser.route) {
+                    WebBrowserScreen(onDownloadUrl = { url ->
+                        homeViewModel.onUrlChanged(url)
+                        homeViewModel.parseUrl(url)
+                        navController.navigate(Screen.Home.route) { launchSingleTop = true }
+                    })
+                }
+                composable(Screen.Queue.route) { QueueScreen() }
+                composable(Screen.Library.route) { LibraryScreen() }
+                composable(Screen.Settings.route) { SettingsScreen(onOpenLegal = { navController.navigate(Screen.Legal.route) }) }
+                composable(Screen.Legal.route) { LegalScreen(onBack = { navController.popBackStack() }) }
             }
         }
 
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
-            verticalArrangement = Arrangement.Bottom
-        ) {
+        Column(modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(), verticalArrangement = Arrangement.Bottom) {
             AnimatedVisibility(
                 visible = currentMedia != null && !isVideoExpanded,
                 enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
             ) { MiniPlayerBar() }
 
-            LiquidGlassNavigationBar(
-                currentRoute = currentDestination,
-                onNavigate = { route ->
-                    if (currentDestination != route) {
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
+            if (currentDestination != Screen.Legal.route) {
+                LiquidGlassNavigationBar(
+                    currentRoute = currentDestination,
+                    onNavigate = { route ->
+                        if (currentDestination != route) {
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
-                    }
-                },
-                backdrop = contentBackdrop,
-                modifier = Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
-            )
+                    },
+                    modifier = Modifier.navigationBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)
+                )
+            }
         }
 
         AnimatedVisibility(visible = isVideoExpanded, enter = slideInVertically(initialOffsetY = { it }) + fadeIn(), exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()) {
