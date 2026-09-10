@@ -15,12 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class YtDlpApp : Application() {
-    lateinit var database: AppDatabase
-        private set
-    lateinit var preferences: AppPreferences
-        private set
-    lateinit var repository: DownloadRepository
-        private set
+    val database: AppDatabase by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppDatabase.getInstance(this) }
+    val preferences: AppPreferences by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { AppPreferences(this) }
+    val repository: DownloadRepository by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { DownloadRepository(database.downloadDao(), preferences) }
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _isEngineReady = MutableStateFlow(false)
@@ -31,14 +28,10 @@ class YtDlpApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        // Keep application startup lightweight. The yt-dlp/FFmpeg/Aria2 native
-        // stack is initialized only when a download or metadata request needs it.
-        database = AppDatabase.getInstance(this)
-        preferences = AppPreferences(this)
-        repository = DownloadRepository(database.downloadDao(), preferences)
+        // Keep process startup free of Room and native yt-dlp/FFmpeg/Aria2 work.
+        // Heavy components are created only when a feature actually needs them.
     }
 
-    /** Explicitly initialize the media engine from a feature that needs it. */
     fun initEngine() {
         appScope.launch {
             val result = YtDlpEngine.ensureInitialized(this@YtDlpApp)
