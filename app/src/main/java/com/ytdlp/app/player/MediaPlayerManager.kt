@@ -24,7 +24,16 @@ import java.io.File
 @OptIn(UnstableApi::class)
 class MediaPlayerManager private constructor(context: Context) {
 
-    val player: ExoPlayer = ExoPlayer.Builder(context.applicationContext).build()
+    private val appContext = context.applicationContext
+
+    /**
+     * Do not construct ExoPlayer during application/navigation composition.
+     * Some devices/OEM Media3 integrations can fail while the player is being
+     * created; playback should not prevent the rest of NovaFetch from opening.
+     */
+    val player: ExoPlayer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        ExoPlayer.Builder(appContext).build().also(::attachPlayerListener)
+    }
 
     private val _currentMedia = MutableStateFlow<DownloadEntity?>(null)
     val currentMedia: StateFlow<DownloadEntity?> = _currentMedia.asStateFlow()
@@ -56,7 +65,6 @@ class MediaPlayerManager private constructor(context: Context) {
     private val _isAudioSheetOpen = MutableStateFlow(false)
     val isAudioSheetOpen: StateFlow<Boolean> = _isAudioSheetOpen.asStateFlow()
 
-    // A-B Loop
     private val _loopPointA = MutableStateFlow<Long?>(null)
     val loopPointA: StateFlow<Long?> = _loopPointA.asStateFlow()
 
@@ -66,7 +74,7 @@ class MediaPlayerManager private constructor(context: Context) {
     private var progressJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
 
-    init {
+    private fun attachPlayerListener(player: ExoPlayer) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(playing: Boolean) {
                 _isPlaying.value = playing
@@ -76,7 +84,9 @@ class MediaPlayerManager private constructor(context: Context) {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state == Player.STATE_READY) {
                     _duration.value = player.duration.coerceAtLeast(0L)
-                    AudioFxManager.instance.initAudioEffects(player.audioSessionId)
+                    runCatching {
+                        AudioFxManager.instance.initAudioEffects(player.audioSessionId)
+                    }
                 } else if (state == Player.STATE_ENDED) {
                     playNext()
                 }
@@ -96,13 +106,10 @@ class MediaPlayerManager private constructor(context: Context) {
                 _currentPosition.value = pos
                 _duration.value = player.duration.coerceAtLeast(0L)
 
-                // A-B Loop Check
                 val a = _loopPointA.value
                 val b = _loopPointB.value
-                if (a != null && b != null && b > a) {
-                    if (pos >= b) {
-                        player.seekTo(a)
-                    }
+                if (a != null && b != null && b > a && pos >= b) {
+                    player.seekTo(a)
                 }
 
                 delay(200)
@@ -134,17 +141,14 @@ class MediaPlayerManager private constructor(context: Context) {
         }
 
         clearAbLoop()
-        val mediaItem = MediaItem.fromUri(uri)
-        player.setMediaItem(mediaItem)
+        player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
         player.playWhenReady = true
         _playbackSpeed.value = 1.0f
         player.playbackParameters = PlaybackParameters(1.0f)
 
         if (entity.mediaType == MediaType.VIDEO) {
-            if (openFullscreenIfVideo) {
-                _isVideoExpanded.value = true
-            }
+            if (openFullscreenIfVideo) _isVideoExpanded.value = true
         } else {
             _isAudioSheetOpen.value = true
         }
@@ -165,26 +169,16 @@ class MediaPlayerManager private constructor(context: Context) {
         val q = _queue.value
         val current = _currentMedia.value ?: return
         val idx = q.indexOfFirst { it.id == current.id }
-        if (idx > 0) {
-            playMedia(q[idx - 1], q, openFullscreenIfVideo = false)
-        } else {
-            seekTo(0L)
-        }
+        if (idx > 0) playMedia(q[idx - 1], q, openFullscreenIfVideo = false) else seekTo(0L)
     }
 
     fun toggleShuffle() {
         _isShuffleEnabled.value = !_isShuffleEnabled.value
-        if (_isShuffleEnabled.value) {
-            _queue.value = _queue.value.shuffled()
-        }
+        if (_isShuffleEnabled.value) _queue.value = _queue.value.shuffled()
     }
 
     fun togglePlayPause() {
-        if (player.isPlaying) {
-            player.pause()
-        } else {
-            player.play()
-        }
+        if (player.isPlaying) player.pause() else player.play()
     }
 
     fun seekTo(positionMs: Long) {
@@ -192,13 +186,9 @@ class MediaPlayerManager private constructor(context: Context) {
         _currentPosition.value = positionMs
     }
 
-    fun seekForward(deltaMs: Long = 10000L) {
-        seekTo(player.currentPosition + deltaMs)
-    }
+    fun seekForward(deltaMs: Long = 10000L) = seekTo(player.currentPosition + deltaMs)
 
-    fun seekRewind(deltaMs: Long = 10000L) {
-        seekTo(player.currentPosition - deltaMs)
-    }
+    fun seekRewind(deltaMs: Long = 10000L) = seekTo(player.currentPosition - deltaMs)
 
     fun setSpeed(speed: Float) {
         _playbackSpeed.value = speed
@@ -215,15 +205,13 @@ class MediaPlayerManager private constructor(context: Context) {
         _repeatMode.value = nextMode
     }
 
-    // A-B Loop Functions
     fun setLoopPointA() {
         _loopPointA.value = player.currentPosition
     }
 
     fun setLoopPointB() {
-        if (_loopPointA.value != null && player.currentPosition > _loopPointA.value!!) {
-            _loopPointB.value = player.currentPosition
-        }
+        val a = _loopPointA.value
+        if (a != null && player.currentPosition > a) _loopPointB.value = player.currentPosition
     }
 
     fun clearAbLoop() {
@@ -240,12 +228,14 @@ class MediaPlayerManager private constructor(context: Context) {
     }
 
     fun closePlayer() {
-        player.stop()
+        if (::player.isInitialized) {
+            player.stop()
+            AudioFxManager.instance.release()
+        }
         _currentMedia.value = null
         _isVideoExpanded.value = false
         _isAudioSheetOpen.value = false
         clearAbLoop()
-        AudioFxManager.instance.release()
         stopProgressTracking()
     }
 
