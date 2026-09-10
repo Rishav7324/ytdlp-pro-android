@@ -23,15 +23,12 @@ import java.io.File
 
 @OptIn(UnstableApi::class)
 class MediaPlayerManager private constructor(context: Context) {
-
     private val appContext = context.applicationContext
+    private var playerCreated = false
 
-    /**
-     * Keep ExoPlayer out of application/navigation startup. It is created only
-     * when a feature actually needs playback, which avoids device-specific
-     * Media3 initialization crashes taking down the whole app.
-     */
+    /** Player is created only when playback is actually requested. */
     val player: ExoPlayer by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        playerCreated = true
         ExoPlayer.Builder(appContext).build().also(::attachPlayerListener)
     }
 
@@ -100,24 +97,18 @@ class MediaPlayerManager private constructor(context: Context) {
         }
     }
 
-    private fun stopProgressTracking() {
-        progressJob?.cancel()
-    }
+    private fun stopProgressTracking() { progressJob?.cancel() }
 
     fun playMedia(entity: DownloadEntity, playlist: List<DownloadEntity> = emptyList(), openFullscreenIfVideo: Boolean = true) {
         val file = File(entity.targetPath)
-        val uri = if (entity.targetPath.startsWith("content://")) {
-            Uri.parse(entity.targetPath)
-        } else if (file.exists()) {
-            Uri.fromFile(file)
-        } else if (entity.url.startsWith("http://") || entity.url.startsWith("https://")) {
-            Uri.parse(entity.url)
-        } else return
+        val uri = if (entity.targetPath.startsWith("content://")) Uri.parse(entity.targetPath)
+        else if (file.exists()) Uri.fromFile(file)
+        else if (entity.url.startsWith("http://") || entity.url.startsWith("https://")) Uri.parse(entity.url)
+        else return
 
         _currentMedia.value = entity
         if (playlist.isNotEmpty()) _queue.value = playlist
         else if (!_queue.value.contains(entity)) _queue.value = listOf(entity) + _queue.value
-
         clearAbLoop()
         player.setMediaItem(MediaItem.fromUri(uri))
         player.prepare()
@@ -127,9 +118,7 @@ class MediaPlayerManager private constructor(context: Context) {
 
         if (entity.mediaType == MediaType.VIDEO) {
             if (openFullscreenIfVideo) _isVideoExpanded.value = true
-        } else {
-            _isAudioSheetOpen.value = true
-        }
+        } else _isAudioSheetOpen.value = true
     }
 
     fun playNext() {
@@ -152,9 +141,7 @@ class MediaPlayerManager private constructor(context: Context) {
         if (_isShuffleEnabled.value) _queue.value = _queue.value.shuffled()
     }
 
-    fun togglePlayPause() {
-        if (player.isPlaying) player.pause() else player.play()
-    }
+    fun togglePlayPause() { if (player.isPlaying) player.pause() else player.play() }
 
     fun seekTo(positionMs: Long) {
         val target = positionMs.coerceIn(0L, player.duration.coerceAtLeast(0L))
@@ -181,33 +168,28 @@ class MediaPlayerManager private constructor(context: Context) {
     }
 
     fun setLoopPointA() { _loopPointA.value = player.currentPosition }
-
     fun setLoopPointB() {
         val a = _loopPointA.value
         if (a != null && player.currentPosition > a) _loopPointB.value = player.currentPosition
     }
-
-    fun clearAbLoop() {
-        _loopPointA.value = null
-        _loopPointB.value = null
-    }
-
+    fun clearAbLoop() { _loopPointA.value = null; _loopPointB.value = null }
     fun setVideoExpanded(expanded: Boolean) { _isVideoExpanded.value = expanded }
     fun setAudioSheetOpen(open: Boolean) { _isAudioSheetOpen.value = open }
 
     fun closePlayer() {
-        player.stop()
+        if (playerCreated) {
+            player.stop()
+            runCatching { AudioFxManager.instance.release() }
+        }
         _currentMedia.value = null
         _isVideoExpanded.value = false
         _isAudioSheetOpen.value = false
         clearAbLoop()
-        AudioFxManager.instance.release()
         stopProgressTracking()
     }
 
     companion object {
         @Volatile private var instance: MediaPlayerManager? = null
-
         fun getInstance(context: Context): MediaPlayerManager {
             return instance ?: synchronized(this) {
                 instance ?: MediaPlayerManager(context.applicationContext).also { instance = it }
