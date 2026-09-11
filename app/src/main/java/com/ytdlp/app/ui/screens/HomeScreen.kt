@@ -459,11 +459,9 @@ fun HomeScreen(
             items(recentDownloads.take(5), key = { it.id }) { item ->
                 DownloadItemCard(
                     download = item,
-                    onPause = { },
-                    onResume = { },
                     onCancel = { },
-                    onPlay = { playerManager.playMedia(item) },
-                    onDelete = { }
+                    onDelete = { },
+                    onPlay = { playerManager.playMedia(item) }
                 )
             }
         }
