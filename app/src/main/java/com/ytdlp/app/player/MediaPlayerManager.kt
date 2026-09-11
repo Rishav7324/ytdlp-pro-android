@@ -179,6 +179,14 @@ class MediaPlayerManager private constructor(context: Context) {
         }
     }
 
+    fun pause() {
+        player.pause()
+    }
+
+    fun play() {
+        player.play()
+    }
+
     fun togglePlayPause() {
         if (player.isPlaying) {
             player.pause()
