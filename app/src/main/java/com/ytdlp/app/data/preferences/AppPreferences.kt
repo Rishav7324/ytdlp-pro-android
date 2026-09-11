@@ -30,6 +30,7 @@ class AppPreferences(private val context: Context) {
         val KEY_COOKIES_CONTENT = stringPreferencesKey("cookies_content")
         val KEY_SPONSOR_BLOCK_ENABLED = booleanPreferencesKey("sponsor_block_enabled")
         val KEY_ARIA2_CONNECTIONS = intPreferencesKey("aria2_connections")
+        val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
     }
 
     private val defaultDownloadDir: String
@@ -132,5 +133,13 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setAria2Connections(count: Int) {
         context.dataStore.edit { it[KEY_ARIA2_CONNECTIONS] = count }
+    }
+
+    val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ONBOARDING_COMPLETED] ?: false
+    }
+
+    suspend fun setOnboardingCompleted(completed: Boolean = true) {
+        context.dataStore.edit { it[KEY_ONBOARDING_COMPLETED] = completed }
     }
 }

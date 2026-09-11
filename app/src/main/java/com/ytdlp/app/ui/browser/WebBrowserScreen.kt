@@ -99,7 +99,11 @@ fun WebBrowserScreen(
         webView?.goBack()
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
         // Browser Address & Navigation Bar
         Column(
             modifier = Modifier
@@ -279,7 +283,7 @@ fun WebBrowserScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(start = 16.dp, end = 16.dp, bottom = 104.dp),
                 horizontalAlignment = Alignment.End
             ) {
                 // Main Page Downloader FAB

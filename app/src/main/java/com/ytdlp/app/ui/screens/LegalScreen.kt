@@ -60,7 +60,14 @@ fun LegalScreen(onBack: () -> Unit) {
     var selected by rememberSaveable { mutableStateOf<String?>(null) }
     val entry = entries.firstOrNull { it.title == selected }
     if (entry != null) { LegalArticle(entry, onBack = { selected = null }); return }
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Rounded.ArrowBack, "Back", Modifier.size(24.dp).clickable(onClick = onBack), tint = NovaInk)
             Spacer(Modifier.width(14.dp)); Column { Text("Legal & Open Source", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold); Text("NovaFetch • v2.0.1", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -80,7 +87,14 @@ fun LegalScreen(onBack: () -> Unit) {
 
 @Composable
 private fun LegalArticle(entry: LegalEntry, onBack: () -> Unit) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.ArrowBack, "Back", Modifier.size(24.dp).clickable(onClick = onBack), tint = NovaInk); Spacer(Modifier.width(14.dp)); Text(entry.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold) }
         Spacer(Modifier.height(18.dp))
         entry.sections.forEach { (title, body) ->

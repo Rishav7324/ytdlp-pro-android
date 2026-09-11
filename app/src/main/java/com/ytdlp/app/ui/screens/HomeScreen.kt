@@ -131,9 +131,10 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 10.dp, bottom = 100.dp)
+        contentPadding = PaddingValues(top = 12.dp, bottom = 110.dp)
     ) {
         // Ultra iOS Liquid Glass Header Card with Official App Icon
         item {
