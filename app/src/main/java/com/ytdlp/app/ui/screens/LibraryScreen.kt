@@ -338,7 +338,7 @@ fun LibraryScreen(
                     DownloadItemCard(
                         download = item,
                         onCancel = { },
-                        onDelete = { viewModel.deleteDownload(item) },
+                        onDelete = { id -> viewModel.deleteDownload(id) },
                         onPlay = { playerManager.playMedia(item) },
                         onShare = { shareMedia(context, item) }
                     )
