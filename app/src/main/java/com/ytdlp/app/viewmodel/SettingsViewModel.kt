@@ -30,6 +30,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val darkThemeMode = preferences.darkThemeMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "SYSTEM")
     val customArguments = preferences.customArguments.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
     val cookiesContent = preferences.cookiesContent.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
+    val sponsorBlockEnabled = preferences.sponsorBlockEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+    val aria2Connections = preferences.aria2Connections.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 8)
 
     private val _engineVersion = MutableStateFlow("Loading...")
     val engineVersion: StateFlow<String> = _engineVersion.asStateFlow()
@@ -70,4 +72,6 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setDarkThemeMode(mode: String) = viewModelScope.launch { preferences.setDarkThemeMode(mode) }
     fun setCustomArguments(args: String) = viewModelScope.launch { preferences.setCustomArguments(args) }
     fun setCookiesContent(cookies: String) = viewModelScope.launch { preferences.setCookiesContent(cookies) }
+    fun setSponsorBlockEnabled(enabled: Boolean) = viewModelScope.launch { preferences.setSponsorBlockEnabled(enabled) }
+    fun setAria2Connections(count: Int) = viewModelScope.launch { preferences.setAria2Connections(count) }
 }

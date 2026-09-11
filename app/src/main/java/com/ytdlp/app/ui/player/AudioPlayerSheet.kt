@@ -1,32 +1,25 @@
 package com.ytdlp.app.ui.player
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MusicNote
@@ -47,7 +40,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -61,13 +53,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -81,401 +69,125 @@ import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AudioPlayerSheet(
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    val playerManager = MediaPlayerManager.getInstance(context)
-    val currentMedia by playerManager.currentMedia.collectAsState()
-    val queue by playerManager.queue.collectAsState()
-    val isPlaying by playerManager.isPlaying.collectAsState()
-    val position by playerManager.currentPosition.collectAsState()
-    val duration by playerManager.duration.collectAsState()
-    val playbackSpeed by playerManager.playbackSpeed.collectAsState()
-    val repeatMode by playerManager.repeatMode.collectAsState()
-    val isShuffleEnabled by playerManager.isShuffleEnabled.collectAsState()
-
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var showEqualizer by remember { mutableStateOf(false) }
-
+fun AudioPlayerSheet(onDismiss: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val manager = MediaPlayerManager.getInstance(context)
+    val media by manager.currentMedia.collectAsState()
+    val queue by manager.queue.collectAsState()
+    val playing by manager.isPlaying.collectAsState()
+    val position by manager.currentPosition.collectAsState()
+    val duration by manager.duration.collectAsState()
+    val speed by manager.playbackSpeed.collectAsState()
+    val repeat by manager.repeatMode.collectAsState()
+    val shuffle by manager.isShuffleEnabled.collectAsState()
+    val pointA by manager.loopPointA.collectAsState()
+    val pointB by manager.loopPointB.collectAsState()
+    var tab by remember { mutableIntStateOf(0) }
+    var equalizer by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val item = media ?: return
+    val artScale by animateFloatAsState(if (playing) 1f else .96f, tween(280), label = "art-scale")
 
-    if (currentMedia == null) return
-    val item = currentMedia ?: return
-
-    val infiniteTransition = rememberInfiniteTransition(label = "VinylSpin")
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        dragHandle = null
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-        ) {
-            // Ambient Backdrop Glow (Audiofy style)
-            if (item.thumbnailUrl.isNotBlank()) {
-                AsyncImage(
-                    model = item.thumbnailUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(50.dp)
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
-                                )
-                            )
-                        )
-                )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp), dragHandle = null) {
+        LazyColumn(modifier = Modifier.fillMaxWidth().navigationBarsPadding(), contentPadding = PaddingValues(18.dp, 8.dp, 18.dp, 26.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onDismiss) { Icon(Icons.Default.KeyboardArrowDown, "Collapse", Modifier.size(30.dp)) }
+                    Text("NOW PLAYING", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                    IconButton(onClick = { equalizer = true }) { Icon(Icons.Default.Tune, "Equalizer", tint = MaterialTheme.colorScheme.primary) }
+                }
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Top Action Bar (Audiofy Style)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Collapse", modifier = Modifier.size(28.dp))
+            item {
+                TabRow(selectedTabIndex = tab, containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f), modifier = Modifier.clip(RoundedCornerShape(16.dp))) {
+                    Tab(tab == 0, { tab = 0 }, text = { Text("Player") })
+                    Tab(tab == 1, { tab = 1 }, text = { Text("Queue ${queue.size}") })
+                    Tab(tab == 2, { tab = 2 }, text = { Text("Details") })
+                }
+            }
+            if (tab == 0) {
+                item {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        Card(modifier = Modifier.size(250.dp).scale(artScale), shape = RoundedCornerShape(30.dp), elevation = CardDefaults.cardElevation(8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                            if (item.thumbnailUrl.isNotBlank()) AsyncImage(item.thumbnailUrl, item.title, Modifier.fillMaxWidth(), contentScale = ContentScale.Crop)
+                            else Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) { Icon(Icons.Default.MusicNote, null, Modifier.size(82.dp), tint = MaterialTheme.colorScheme.primary) }
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        Text(item.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(item.uploader.ifBlank { "NovaFetch Audio" }, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-
-                    // Format Badge
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = if (item.targetPath.endsWith(".mp3")) "MP3 • 320 KBPS" else "STUDIO AUDIO",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                }
+                item {
+                    val safeDuration = duration.coerceAtLeast(1L)
+                    Slider(value = position.coerceIn(0L, safeDuration).toFloat(), onValueChange = { manager.seekTo(it.toLong()) }, valueRange = 0f..safeDuration.toFloat(), modifier = Modifier.fillMaxWidth())
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(formatDuration(position), style = MaterialTheme.typography.labelSmall); Text(formatDuration(duration), style = MaterialTheme.typography.labelSmall) }
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { manager.toggleShuffle() }) { Icon(Icons.Default.Shuffle, "Shuffle", tint = if (shuffle) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
+                        IconButton(onClick = { manager.seekRewind(10000) }) { Icon(Icons.Default.SkipPrevious, "Back 10 seconds", Modifier.size(30.dp)) }
+                        IconButton(onClick = { manager.togglePlayPause() }, Modifier.size(72.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary)) { Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, "Play", Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onPrimary) }
+                        IconButton(onClick = { manager.seekForward(10000) }) { Icon(Icons.Default.SkipNext, "Forward 10 seconds", Modifier.size(30.dp)) }
+                        IconButton(onClick = { manager.toggleRepeatMode() }) { Icon(if (repeat == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat, "Repeat", tint = if (repeat != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
-
-                    Row {
-                        IconButton(onClick = { showEqualizer = true }) {
-                            Icon(Icons.Default.Tune, contentDescription = "Audio Studio FX", tint = MaterialTheme.colorScheme.primary)
+                }
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(.75f, 1f, 1.25f, 1.5f, 2f).forEach { value -> FilterChip(selected = speed == value, onClick = { manager.setSpeed(value) }, label = { Text("${value}x", fontSize = 11.sp) }, modifier = Modifier.weight(1f)) }
+                    }
+                }
+                item {
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .5f))) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("A–B loop", fontWeight = FontWeight.Bold)
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                FilterChip(pointA != null, { manager.setLoopPointA() }, label = { Text(if (pointA == null) "Set A" else "A ${formatDuration(pointA ?: 0)}") }, modifier = Modifier.weight(1f))
+                                FilterChip(pointB != null, { manager.setLoopPointB() }, label = { Text(if (pointB == null) "Set B" else "B ${formatDuration(pointB ?: 0)}") }, modifier = Modifier.weight(1f))
+                                IconButton(onClick = { manager.clearAbLoop() }) { Icon(Icons.Default.Close, "Clear loop") }
+                            }
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Tab Switcher
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp)),
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Console", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Queue (${queue.size})", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        text = { Text("Details", fontWeight = FontWeight.Bold) }
-                    )
+            } else if (tab == 1) {
+                items(queue, key = { it.id }) { q ->
+                    Card(onClick = { manager.playMedia(q, queue, false) }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = if (q.id == item.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .5f))) {
+                        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(if (q.id == item.id) Icons.Default.GraphicEq else Icons.Default.MusicNote, null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) { Text(q.title, fontWeight = if (q.id == item.id) FontWeight.Bold else FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(q.uploader, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        }
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                when (selectedTab) {
-                    0 -> {
-                        // Center Vinyl Artwork Card (Audiofy Console)
-                        Card(
-                            modifier = Modifier
-                                .size(230.dp)
-                                .clip(RoundedCornerShape(28.dp)),
-                            shape = RoundedCornerShape(28.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color.Black)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .rotate(if (isPlaying) rotation else 0f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (item.thumbnailUrl.isNotBlank()) {
-                                    AsyncImage(
-                                        model = item.thumbnailUrl,
-                                        contentDescription = item.title,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.MusicNote,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(80.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        // Title & Artist with Clean Layout
-                        Text(
-                            text = item.title,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = item.uploader.ifBlank { "Audiofy Music" },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Audiofy Scrubber Bar
-                        val currentPosFloat = position.toFloat().coerceIn(0f, duration.toFloat().coerceAtLeast(1f))
-                        Slider(
-                            value = currentPosFloat,
-                            onValueChange = { playerManager.seekTo(it.toLong()) },
-                            valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(formatDuration(position), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                            Text(formatDuration(duration), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Speed Chips
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { speed ->
-                                    FilterChip(
-                                        selected = playbackSpeed == speed,
-                                        onClick = { playerManager.setSpeed(speed) },
-                                        label = { Text("${speed}x", fontSize = 11.sp) },
-                                        shape = RoundedCornerShape(8.dp)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Audiofy Core Playback Controls
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = { playerManager.toggleShuffle() }) {
-                                Icon(
-                                    imageVector = Icons.Default.Shuffle,
-                                    contentDescription = "Shuffle",
-                                    tint = if (isShuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { playerManager.playPrevious() },
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            ) {
-                                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(30.dp))
-                            }
-
-                            IconButton(
-                                onClick = { playerManager.togglePlayPause() },
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            ) {
-                                Icon(
-                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = "Play/Pause",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(40.dp)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { playerManager.playNext() },
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            ) {
-                                Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(30.dp))
-                            }
-
-                            IconButton(onClick = { playerManager.toggleRepeatMode() }) {
-                                Icon(
-                                    imageVector = if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Default.RepeatOne else Icons.Default.Repeat,
-                                    contentDescription = "Repeat",
-                                    tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-                    }
-                    1 -> {
-                        // Audiofy Playing Queue List
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(380.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            items(queue, key = { it.id }) { qItem ->
-                                val isCurrent = qItem.id == item.id
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { playerManager.playMedia(qItem, queue, openFullscreenIfVideo = false) },
-                                    shape = RoundedCornerShape(14.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isCurrent) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isCurrent) Icons.Default.GraphicEq else Icons.Default.MusicNote,
-                                            contentDescription = null,
-                                            tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = qItem.title,
-                                                fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = qItem.uploader,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.outline,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    2 -> {
-                        // Audiofy Metadata Details Tab
-                        val targetFile = File(item.targetPath)
-                        val fileSizeMb = if (targetFile.exists()) String.format("%.2f MB", targetFile.length() / (1024f * 1024f)) else "N/A"
-
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(380.dp)
-                        ) {
-                            Card(
-                                shape = RoundedCornerShape(16.dp),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                            ) {
-                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    DetailRow(label = "Format & Codec", value = if (item.targetPath.endsWith(".mp3")) "MP3 (MPEG Audio Layer III)" else "AAC / M4A Native")
-                                    DetailRow(label = "Estimated Bitrate", value = "320 kbps (Studio Quality)")
-                                    DetailRow(label = "Sample Rate", value = "44.1 kHz / Stereo (2ch)")
-                                    DetailRow(label = "File Size", value = fileSizeMb)
-                                    DetailRow(label = "Duration", value = formatDuration(duration))
-                                    DetailRow(label = "Public Storage Path", value = item.targetPath.ifBlank { "Phone Storage" })
-                                }
-                            }
-                        }
+            } else {
+                item {
+                    val file = File(item.targetPath)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DetailRow("Container", if (item.targetPath.endsWith(".mp3")) "MP3" else "Media file")
+                        DetailRow("Duration", formatDuration(duration))
+                        DetailRow("Playback", "${speed}x")
+                        DetailRow("File size", if (file.exists()) "%.2f MB".format(file.length() / 1048576f) else "Unavailable")
+                        DetailRow("Location", item.targetPath.ifBlank { "Phone storage" })
                     }
                 }
             }
         }
-
-        if (showEqualizer) {
-            EqualizerDialog(onDismiss = { showEqualizer = false })
-        }
+        if (equalizer) EqualizerDialog(onDismiss = { equalizer = false })
     }
 }
 
 @Composable
 private fun DetailRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
-        Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f))) {
+        Row(Modifier.padding(13.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
+            Text(value, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1.2f))
+        }
     }
 }
 
 private fun formatDuration(ms: Long): String {
-    val totalSeconds = ms / 1000
-    val minutes = totalSeconds / 60
-    val seconds = totalSeconds % 60
-    return String.format("%02d:%02d", minutes, seconds)
+    val total = (ms / 1000).coerceAtLeast(0)
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val s = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
 }

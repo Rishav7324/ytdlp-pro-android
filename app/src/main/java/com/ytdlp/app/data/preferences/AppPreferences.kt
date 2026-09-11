@@ -28,6 +28,8 @@ class AppPreferences(private val context: Context) {
         val KEY_DARK_THEME_MODE = stringPreferencesKey("dark_theme_mode")
         val KEY_CUSTOM_ARGUMENTS = stringPreferencesKey("custom_arguments")
         val KEY_COOKIES_CONTENT = stringPreferencesKey("cookies_content")
+        val KEY_SPONSOR_BLOCK_ENABLED = booleanPreferencesKey("sponsor_block_enabled")
+        val KEY_ARIA2_CONNECTIONS = intPreferencesKey("aria2_connections")
     }
 
     private val defaultDownloadDir: String
@@ -76,6 +78,14 @@ class AppPreferences(private val context: Context) {
         prefs[KEY_COOKIES_CONTENT] ?: ""
     }
 
+    val sponsorBlockEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_SPONSOR_BLOCK_ENABLED] ?: true
+    }
+
+    val aria2Connections: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ARIA2_CONNECTIONS] ?: 8
+    }
+
     suspend fun setDownloadPath(path: String) {
         context.dataStore.edit { it[KEY_DOWNLOAD_PATH] = path }
     }
@@ -114,5 +124,13 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setCookiesContent(cookies: String) {
         context.dataStore.edit { it[KEY_COOKIES_CONTENT] = cookies }
+    }
+
+    suspend fun setSponsorBlockEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_SPONSOR_BLOCK_ENABLED] = enabled }
+    }
+
+    suspend fun setAria2Connections(count: Int) {
+        context.dataStore.edit { it[KEY_ARIA2_CONNECTIONS] = count }
     }
 }

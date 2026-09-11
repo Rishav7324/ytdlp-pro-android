@@ -1,8 +1,8 @@
-name: Build Android Release & Debug APK
+name: Build NovaFetch Release
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, feature/novafetch-production-upgrade ]
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
@@ -13,45 +13,49 @@ permissions:
 
 jobs:
   build:
-    name: Build & Package Release and Debug APK
+    name: Build & Package NovaFetch
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Source Code
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
-          distribution: 'temurin'
+          distribution: temurin
 
-      - name: Setup Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant Execute Permission for Gradlew
+      - name: Grant execute permission
         run: chmod +x gradlew
 
-      - name: Build Release & Debug APK
-        run: ./gradlew assembleRelease assembleDebug --stacktrace --no-daemon
+      - name: Clean build
+        run: ./gradlew clean --stacktrace --no-daemon
 
-      - name: Upload APK Artifacts
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
-          name: YtDlp-Android-APKs
+          name: NovaFetch-APKs
           path: |
-            app/build/outputs/apk/release/*.apk
             app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
           retention-days: 30
 
-      - name: Create GitHub Release (On Tag)
+      - name: Upload release on version tag
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+          files: app/build/outputs/apk/release/*.apk
           draft: false
           prerelease: false
           generate_release_notes: true

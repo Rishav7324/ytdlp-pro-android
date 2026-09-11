@@ -2,34 +2,31 @@ package com.ytdlp.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Primary Modern Neon Accents
-val PrimaryIndigo = Color(0xFF6366F1)
-val PrimaryIndigoDark = Color(0xFF4F46E5)
-val SecondaryTeal = Color(0xFF14B8A6)
-val TertiaryPurple = Color(0xFF8B5CF6)
-val AccentPink = Color(0xFFEC4899)
-val AccentOrange = Color(0xFFF97316)
-val AccentGreen = Color(0xFF10B981)
-val AccentRed = Color(0xFFEF4444)
-val AccentCyan = Color(0xFF06B6D4)
-
-// Dark / OLED Palette
-val BackgroundDark = Color(0xFF0B0F19)
-val SurfaceDark = Color(0xFF111827)
-val SurfaceVariantDark = Color(0xFF1F2937)
-val CardBorderDark = Color(0xFF374151)
-val TextPrimaryDark = Color(0xFFF9FAFB)
-val TextSecondaryDark = Color(0xFF9CA3AF)
-
-// Light Palette
-val BackgroundLight = Color(0xFFF8FAFC)
-val SurfaceLight = Color(0xFFFFFFFF)
-val SurfaceVariantLight = Color(0xFFF1F5F9)
-val TextPrimaryLight = Color(0xFF0F172A)
-val TextSecondaryLight = Color(0xFF64748B)
-
-// Brand Gradients
-val YouTubeRed = Color(0xFFFF0000)
+// NovaFetch liquid-glass palette.
+val NovaAqua = Color(0xFFB1E5E6)
+val NovaAquaSoft = Color(0xFFCCFBFA)
+val NovaAquaDeep = Color(0xFF5C9FA2)
+val NovaInk = Color(0xFF173638)
+val NovaPrimary = NovaAquaDeep
+val NovaPrimaryDark = Color(0xFF77BFC2)
+val NovaSecondary = NovaAquaSoft
+val NovaTertiary = NovaAqua
+val AccentGreen = Color(0xFF2E9B68)
+val AccentRed = Color(0xFFD95C62)
+val AccentOrange = Color(0xFFD58A35)
+val BackgroundDark = Color(0xFF0B1516)
+val SurfaceDark = Color(0xFF122021)
+val SurfaceVariantDark = Color(0xFF1A2B2C)
+val CardBorderDark = Color(0xFF2B4546)
+val TextPrimaryDark = Color(0xFFF8FFFF)
+val TextSecondaryDark = Color(0xFFB8CCCC)
+val BackgroundLight = Color(0xFFF3FAFA)
+val SurfaceLight = Color.White
+val SurfaceVariantLight = Color(0xFFEAF7F7)
+val CardBorderLight = Color(0xFFD0EAEA)
+val TextPrimaryLight = Color(0xFF173638)
+val TextSecondaryLight = Color(0xFF617B7C)
+val YouTubeRed = Color(0xFFFF0033)
 val InstagramPink = Color(0xFFE1306C)
 val TikTokCyan = Color(0xFF00F2FE)
 val TwitterBlue = Color(0xFF1DA1F2)

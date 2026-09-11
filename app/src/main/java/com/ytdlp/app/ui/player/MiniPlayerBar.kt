@@ -8,33 +8,12 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,6 +32,10 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.ytdlp.app.data.local.MediaType
 import com.ytdlp.app.player.MediaPlayerManager
+import com.ytdlp.app.ui.components.LiquidGlassCard
+import com.ytdlp.app.ui.components.liquidGlass
+import com.ytdlp.app.ui.theme.NovaAqua
+import com.ytdlp.app.ui.theme.NovaAquaDeep
 
 @Composable
 fun MiniPlayerBar() {
@@ -71,46 +54,33 @@ fun MiniPlayerBar() {
         val item = currentMedia ?: return@AnimatedVisibility
         val progress = if (duration > 0) position.toFloat() / duration.toFloat() else 0f
 
-        Card(
+        LiquidGlassCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .shadow(12.dp, RoundedCornerShape(18.dp))
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f)
-                        )
-                    ),
-                    shape = RoundedCornerShape(18.dp)
-                )
-                .clickable {
-                    if (item.mediaType == MediaType.VIDEO) {
-                        playerManager.setVideoExpanded(true)
-                    } else {
-                        playerManager.setAudioSheetOpen(true)
-                    }
-                },
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
-            )
+                .padding(horizontal = 14.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(26.dp),
+            elevation = 16.dp,
+            onClick = {
+                if (item.mediaType == MediaType.VIDEO) {
+                    playerManager.setVideoExpanded(true)
+                } else {
+                    playerManager.setAudioSheetOpen(true)
+                }
+            }
         ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Artwork Thumbnail
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color.Black),
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.Black.copy(alpha = 0.4f)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (item.thumbnailUrl.isNotBlank()) {
@@ -122,7 +92,7 @@ fun MiniPlayerBar() {
                             )
                         } else {
                             Icon(
-                                imageVector = if (item.mediaType == MediaType.VIDEO) Icons.Default.Videocam else Icons.Default.MusicNote,
+                                imageVector = if (item.mediaType == MediaType.VIDEO) Icons.Rounded.Videocam else Icons.Rounded.MusicNote,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
@@ -142,17 +112,18 @@ fun MiniPlayerBar() {
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = item.uploader.ifBlank { if (item.mediaType == MediaType.VIDEO) "Video" else "Audio" },
+                            text = item.uploader.ifBlank { if (item.mediaType == MediaType.VIDEO) "Video Stream" else "Audio Track" },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    // Controls (Play/Pause, Next, Close)
+                    // Controls
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(
@@ -160,22 +131,24 @@ fun MiniPlayerBar() {
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
+                                .background(
+                                    Brush.linearGradient(listOf(NovaAqua, NovaAquaDeep))
+                                )
                         ) {
                             Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                 contentDescription = "Play/Pause",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = Color(0xFF173638),
                                 modifier = Modifier.size(22.dp)
                             )
                         }
 
                         IconButton(
                             onClick = { playerManager.playNext() },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
-                                Icons.Default.SkipNext,
+                                Icons.Rounded.SkipNext,
                                 contentDescription = "Next",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -183,10 +156,10 @@ fun MiniPlayerBar() {
 
                         IconButton(
                             onClick = { playerManager.closePlayer() },
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
-                                Icons.Default.Close,
+                                Icons.Rounded.Close,
                                 contentDescription = "Close",
                                 tint = MaterialTheme.colorScheme.outline
                             )
@@ -194,15 +167,22 @@ fun MiniPlayerBar() {
                     }
                 }
 
-                // Mini Progress Indicator (OnePlayer Style)
-                LinearProgressIndicator(
-                    progress = { progress.coerceIn(0f, 1f) },
+                // Mini Liquid Progress Line
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(3.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+                        .height(3.dp)
+                        .background(Color.White.copy(alpha = 0.15f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .background(
+                                Brush.horizontalGradient(listOf(NovaAqua, NovaAquaDeep))
+                            )
+                    )
+                }
             }
         }
     }

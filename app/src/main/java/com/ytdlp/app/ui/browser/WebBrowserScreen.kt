@@ -64,6 +64,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.ytdlp.app.ui.components.LiquidGlassCard
+import com.ytdlp.app.ui.components.liquidGlass
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable

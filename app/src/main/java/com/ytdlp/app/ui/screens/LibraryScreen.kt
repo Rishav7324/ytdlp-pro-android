@@ -4,60 +4,38 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ytdlp.app.data.local.DownloadEntity
 import com.ytdlp.app.data.local.MediaType
 import com.ytdlp.app.data.scanner.LocalMediaScanner
 import com.ytdlp.app.player.MediaPlayerManager
+import com.ytdlp.app.ui.components.AppleSpringSpec
 import com.ytdlp.app.ui.components.DownloadItemCard
+import com.ytdlp.app.ui.components.LiquidGlassCard
+import com.ytdlp.app.ui.components.LiquidGlassPill
+import com.ytdlp.app.ui.components.liquidGlass
 import com.ytdlp.app.viewmodel.LibraryFilter
 import com.ytdlp.app.viewmodel.LibraryViewModel
 import kotlinx.coroutines.launch
@@ -112,7 +90,9 @@ fun LibraryScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -122,127 +102,245 @@ fun LibraryScreen(
                 Text(
                     text = "Media Library",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Black
                 )
                 Text(
                     text = "${displayList.size} files available",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Row {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (activeTab == 1) {
-                    IconButton(onClick = { refreshLocalMedia() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Scan Device Media")
+                    IconButton(
+                        onClick = { refreshLocalMedia() },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .liquidGlass(shape = CircleShape, elevation = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.Refresh,
+                            contentDescription = "Scan Device Media",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 } else if (completedList.isNotEmpty()) {
-                    IconButton(onClick = { viewModel.clearAllCompleted() }) {
-                        Icon(Icons.Default.DeleteSweep, contentDescription = "Clear Completed", tint = MaterialTheme.colorScheme.error)
+                    IconButton(
+                        onClick = { viewModel.clearAllCompleted() },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .liquidGlass(shape = CircleShape, elevation = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Rounded.DeleteSweep,
+                            contentDescription = "Clear Completed",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Library Source Switcher (Downloads vs Device Storage)
-        TabRow(
-            selectedTabIndex = activeTab,
-            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+        // iOS Liquid Glass Segmented Control
+        LiquidGlassCard(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(24.dp),
+            elevation = 4.dp
         ) {
-            Tab(
-                selected = activeTab == 0,
-                onClick = { activeTab = 0 },
-                text = { Text("Downloads (${completedList.size})", fontWeight = FontWeight.Bold) }
-            )
-            Tab(
-                selected = activeTab == 1,
-                onClick = { activeTab = 1 },
-                text = { Text("Device Music & Video", fontWeight = FontWeight.Bold) }
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Downloads Tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            if (activeTab == 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent
+                        )
+                        .clickable { activeTab = 0 },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Downloads (${completedList.size})",
+                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+                        fontWeight = if (activeTab == 0) FontWeight.ExtraBold else FontWeight.Normal,
+                        color = if (activeTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // Device Storage Tab
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            if (activeTab == 1) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent
+                        )
+                        .clickable { activeTab = 1 },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Device Storage",
+                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
+                        fontWeight = if (activeTab == 1) FontWeight.ExtraBold else FontWeight.Normal,
+                        color = if (activeTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Search Bar
+        // Search Bar with Liquid Glass
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.setSearchQuery(it) },
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
-            placeholder = { Text("Search title, album or creator...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            shape = RoundedCornerShape(18.dp),
+            placeholder = { Text("Search songs, videos or creators...") },
+            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Category Filter Chips
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
-                selected = currentFilter == LibraryFilter.ALL,
-                onClick = { viewModel.setFilter(LibraryFilter.ALL) },
-                label = { Text("All") }
-            )
-            FilterChip(
-                selected = currentFilter == LibraryFilter.VIDEOS,
-                onClick = { viewModel.setFilter(LibraryFilter.VIDEOS) },
-                label = { Text("Videos") }
-            )
-            FilterChip(
-                selected = currentFilter == LibraryFilter.AUDIO,
-                onClick = { viewModel.setFilter(LibraryFilter.AUDIO) },
-                label = { Text("Audio") }
-            )
-        }
-
         Spacer(modifier = Modifier.height(10.dp))
 
-        if (displayList.isEmpty()) {
+        // Category Filter Pills
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LiquidGlassPill(
+                isSelected = currentFilter == LibraryFilter.ALL,
+                onClick = { viewModel.setFilter(LibraryFilter.ALL) }
+            ) {
+                Text(
+                    text = "All",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            LiquidGlassPill(
+                isSelected = currentFilter == LibraryFilter.VIDEOS,
+                onClick = { viewModel.setFilter(LibraryFilter.VIDEOS) }
+            ) {
+                Icon(
+                    Icons.Rounded.Videocam,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Videos",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            LiquidGlassPill(
+                isSelected = currentFilter == LibraryFilter.AUDIO,
+                onClick = { viewModel.setFilter(LibraryFilter.AUDIO) }
+            ) {
+                Icon(
+                    Icons.Rounded.Audiotrack,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Audio",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (isScanning) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = if (activeTab == 0) Icons.Default.FolderOpen else Icons.Default.PhoneAndroid,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = if (activeTab == 0) "No downloads yet" else "No local media scanned",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (activeTab == 1) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Button(
-                            onClick = { refreshLocalMedia() },
-                            shape = RoundedCornerShape(10.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    strokeWidth = 3.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else if (displayList.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 100.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                LiquidGlassCard(
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                    shape = RoundedCornerShape(26.dp),
+                    elevation = 6.dp
+                ) {
+                    Column(
+                        modifier = Modifier.padding(28.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .liquidGlass(shape = CircleShape, elevation = 4.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("Scan Device Media")
+                            Icon(
+                                imageVector = if (activeTab == 0) Icons.Rounded.FolderOpen else Icons.Rounded.PhoneAndroid,
+                                contentDescription = null,
+                                modifier = Modifier.size(32.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = if (activeTab == 0) "No Downloads Yet" else "No Device Media Found",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = if (activeTab == 0) "Downloaded videos and audio will appear here." else "Ensure storage permission is granted to scan local files.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
         } else {
             LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 110.dp)
             ) {
                 items(displayList, key = { it.id }) { item ->
                     DownloadItemCard(
                         download = item,
-                        onCancel = {},
-                        onDelete = { viewModel.deleteDownload(it) },
-                        onPlay = { playerManager.playMedia(item, displayList) },
-                        onShare = { shareMediaFile(context, item) }
+                        onCancel = { },
+                        onDelete = { viewModel.deleteDownload(item) },
+                        onPlay = { playerManager.playMedia(item) },
+                        onShare = { shareMedia(context, item) }
                     )
                 }
             }
@@ -250,25 +348,26 @@ fun LibraryScreen(
     }
 }
 
-private fun shareMediaFile(context: Context, item: DownloadEntity) {
-    if (item.targetPath.isBlank()) return
-    val file = File(item.targetPath)
-    if (!file.exists()) return
-
+private fun shareMedia(context: Context, item: DownloadEntity) {
     try {
+        val file = File(item.targetPath)
+        if (!file.exists()) {
+            Toast.makeText(context, "File does not exist on disk", Toast.LENGTH_SHORT).show()
+            return
+        }
         val uri: Uri = FileProvider.getUriForFile(
             context,
             "${context.packageName}.provider",
             file
         )
-        val mimeType = if (item.mediaType == MediaType.VIDEO) "video/*" else "audio/*"
+        val mime = if (item.mediaType == MediaType.VIDEO) "video/*" else "audio/*"
         val intent = Intent(Intent.ACTION_SEND).apply {
-            type = mimeType
+            type = mime
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        context.startActivity(Intent.createChooser(intent, "Share file"))
+        context.startActivity(Intent.createChooser(intent, "Share ${item.title}"))
     } catch (e: Exception) {
-        Toast.makeText(context, "Unable to share file: ${e.message}", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "Share failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
     }
 }

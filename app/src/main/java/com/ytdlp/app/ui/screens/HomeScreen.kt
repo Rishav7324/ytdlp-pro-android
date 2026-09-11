@@ -8,23 +8,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -43,47 +32,47 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.Hd
+import androidx.compose.material.icons.rounded.PlaylistPlay
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ytdlp.app.R
 import com.ytdlp.app.YtDlpApp
 import com.ytdlp.app.data.local.MediaType
 import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.DownloadItemCard
 import com.ytdlp.app.ui.components.FormatSelectionSheet
+import com.ytdlp.app.ui.components.LiquidGlassCard
+import com.ytdlp.app.ui.components.LiquidGlassPill
 import com.ytdlp.app.ui.components.VideoPreviewCard
 import com.ytdlp.app.ui.components.batch.BatchDownloadModal
 import com.ytdlp.app.ui.components.equalizer.EqualizerDialog
+import com.ytdlp.app.ui.components.liquidGlass
 import com.ytdlp.app.ui.theme.AccentOrange
 import com.ytdlp.app.ui.theme.InstagramPink
+import com.ytdlp.app.ui.theme.NovaAqua
+import com.ytdlp.app.ui.theme.NovaAquaDeep
+import com.ytdlp.app.ui.theme.NovaAquaSoft
+import com.ytdlp.app.ui.theme.NovaInk
 import com.ytdlp.app.ui.theme.RedditOrange
 import com.ytdlp.app.ui.theme.SoundCloudOrange
 import com.ytdlp.app.ui.theme.TikTokCyan
@@ -116,13 +105,15 @@ fun HomeScreen(
 
     var clipboardDetectedUrl by remember { mutableStateOf<String?>(null) }
 
-    // Clipboard Auto-Detect
+    // Safe Clipboard Auto-Detect (protected from SecurityException on Android 10-15)
     LaunchedEffect(Unit) {
-        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        if (clipboard.hasPrimaryClip() && clipboard.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) == true) {
-            val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.trim() ?: ""
-            if ((text.startsWith("http://") || text.startsWith("https://") || text.contains("youtu") || text.contains("instagram") || text.contains("tiktok") || text.contains("twitter") || text.contains("reddit")) && text != urlInput) {
-                clipboardDetectedUrl = text
+        runCatching {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            if (clipboard != null && clipboard.hasPrimaryClip() && clipboard.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) == true) {
+                val text = clipboard.primaryClip?.getItemAt(0)?.text?.toString()?.trim() ?: ""
+                if ((text.startsWith("http://") || text.startsWith("https://") || text.contains("youtu") || text.contains("instagram") || text.contains("tiktok") || text.contains("twitter") || text.contains("reddit")) && text != urlInput) {
+                    clipboardDetectedUrl = text
+                }
             }
         }
     }
@@ -142,21 +133,14 @@ fun HomeScreen(
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 10.dp, bottom = 90.dp)
+        contentPadding = PaddingValues(top = 10.dp, bottom = 100.dp)
     ) {
-        // Audiofy & OnePlayer Studio Header Card
+        // Ultra iOS Liquid Glass Header Card with Official App Icon
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(8.dp, RoundedCornerShape(24.dp))
-                    .border(
-                        1.dp,
-                        Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), MaterialTheme.colorScheme.secondary.copy(alpha = 0.3f))),
-                        RoundedCornerShape(24.dp)
-                    ),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                elevation = 14.dp
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
@@ -167,63 +151,110 @@ fun HomeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary),
+                                    .size(48.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .shadow(6.dp, RoundedCornerShape(14.dp))
+                                    .background(Color.White.copy(alpha = 0.9f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(26.dp))
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "yt-dlp Pro Studio",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Black
+                                Image(
+                                    painter = painterResource(id = R.drawable.app_logo),
+                                    contentDescription = "NovaFetch Logo",
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(RoundedCornerShape(12.dp))
                                 )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "NovaFetch",
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    listOf(NovaAqua, NovaAquaDeep)
+                                                )
+                                            )
+                                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "PRO",
+                                            color = NovaInk,
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                }
                                 Text(
-                                    text = "Audiofy & OnePlayer Pro Engine",
+                                    text = "Ultra Liquid Glass Engine",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            IconButton(onClick = { showEqualizer = true }) {
-                                Icon(Icons.Default.Tune, contentDescription = "Audio Studio FX", tint = MaterialTheme.colorScheme.primary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            IconButton(
+                                onClick = { showEqualizer = true },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .liquidGlass(shape = CircleShape, elevation = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Tune,
+                                    contentDescription = "Audio Studio FX",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
-                            IconButton(onClick = {
-                                if (uiState is HomeUiState.Success) {
-                                    showBatchModal = true
-                                } else if (urlInput.isNotBlank()) {
-                                    viewModel.parseUrl(urlInput)
-                                }
-                            }) {
-                                Icon(Icons.Default.PlaylistPlay, contentDescription = "Batch Downloader", tint = MaterialTheme.colorScheme.secondary)
+                            IconButton(
+                                onClick = {
+                                    if (uiState is HomeUiState.Success) {
+                                        showBatchModal = true
+                                    } else if (urlInput.isNotBlank()) {
+                                        viewModel.parseUrl(urlInput)
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .liquidGlass(shape = CircleShape, elevation = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.PlaylistPlay,
+                                    contentDescription = "Batch Downloader",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Downloader Quality Telemetry
+                    // Quality Telemetry Glass Badges
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.6f))
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .liquidGlass(shape = RoundedCornerShape(16.dp), elevation = 2.dp)
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Hd, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.Hd, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("True 1080p FHD / 4K UHD", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                            Text("True 1080p / 4K Stream Merge", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Equalizer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Rounded.Equalizer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("320kbps Studio Audio", fontWeight = FontWeight.Bold, fontSize = 11.sp)
                         }
@@ -232,24 +263,32 @@ fun HomeScreen(
             }
         }
 
-        // Downloader Input Card
+        // Downloader Input Glass Card
         item {
-            Card(
+            LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                shape = RoundedCornerShape(26.dp),
+                elevation = 8.dp
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Download Any Audio / Video", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.height(10.dp))
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text(
+                        "Download Any Video or Audio",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
                         value = urlInput,
                         onValueChange = { viewModel.onUrlChanged(it) },
-                        placeholder = { Text("Paste YouTube, Instagram, Reels link...") },
+                        placeholder = { Text("Paste YouTube, Instagram, TikTok link...") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
-                        shape = RoundedCornerShape(16.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        ),
                         trailingIcon = {
                             if (urlInput.isNotBlank()) {
                                 IconButton(
@@ -258,7 +297,11 @@ fun HomeScreen(
                                         viewModel.parseUrl(urlInput)
                                     }
                                 ) {
-                                    Icon(Icons.Default.Download, contentDescription = "Extract & Download", tint = MaterialTheme.colorScheme.primary)
+                                    Icon(
+                                        Icons.Rounded.Download,
+                                        contentDescription = "Extract & Download",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         },
@@ -273,33 +316,33 @@ fun HomeScreen(
                         )
                     )
 
-                    // Clipboard Detect Floating Chip
+                    // Clipboard Detect Floating Glass Chip
                     if (!clipboardDetectedUrl.isNullOrBlank() && urlInput.isBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Card(
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    clipboardDetectedUrl?.let {
-                                        viewModel.onUrlChanged(it)
-                                        viewModel.parseUrl(it)
-                                        clipboardDetectedUrl = null
-                                    }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        LiquidGlassPill(
+                            onClick = {
+                                clipboardDetectedUrl?.let {
+                                    viewModel.onUrlChanged(it)
+                                    viewModel.parseUrl(it)
+                                    clipboardDetectedUrl = null
                                 }
+                            },
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Auto-Paste: ${clipboardDetectedUrl?.take(36)}...",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            Icon(
+                                Icons.Rounded.ContentPaste,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Auto-Paste: ${clipboardDetectedUrl?.take(36)}...",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
                 }
@@ -315,11 +358,10 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 platforms.forEach { (name, color, siteUrl) ->
-                    Card(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(14.dp))
-                            .clickable { onNavigateToBrowser(siteUrl) },
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    LiquidGlassCard(
+                        shape = RoundedCornerShape(18.dp),
+                        elevation = 4.dp,
+                        onClick = { onNavigateToBrowser(siteUrl) }
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -330,6 +372,7 @@ fun HomeScreen(
                                     .size(10.dp)
                                     .clip(CircleShape)
                                     .background(color)
+                                    .shadow(4.dp, CircleShape, ambientColor = color)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(name, fontWeight = FontWeight.Bold, fontSize = 12.sp)
@@ -343,22 +386,28 @@ fun HomeScreen(
         item {
             when (val state = uiState) {
                 is HomeUiState.Loading -> {
-                    Card(
+                    LiquidGlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        shape = RoundedCornerShape(24.dp)
                     ) {
-                        Box(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(140.dp),
-                            contentAlignment = Alignment.Center
+                                .padding(20.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text("Parsing 1080p FHD / 4K UHD Streams...", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            }
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.5.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Text(
+                                text = "Analyzing stream with yt-dlp...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -369,89 +418,86 @@ fun HomeScreen(
                     )
                 }
                 is HomeUiState.Error -> {
-                    Card(
+                    LiquidGlassCard(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                        shape = RoundedCornerShape(22.dp),
+                        tintColor = MaterialTheme.colorScheme.error
                     ) {
-                        Column(modifier = Modifier.padding(14.dp)) {
-                            Text("Notice", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(state.message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
-                        }
+                        Text(
+                            text = state.message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(16.dp)
+                        )
                     }
                 }
-                is HomeUiState.Idle -> {}
+                HomeUiState.Idle -> { }
             }
         }
 
-        // Recent Downloads Section with Instant Playback
+        // Recent Downloads Section Header
         if (recentDownloads.isNotEmpty()) {
             item {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Recent Media",
+                        text = "Recent Activity",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = "${recentDownloads.size} Items",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
+                    TextButton(onClick = onNavigateToQueue) {
+                        Text("View Queue", fontWeight = FontWeight.Bold)
+                    }
                 }
-                Spacer(modifier = Modifier.height(4.dp))
             }
 
-            items(recentDownloads, key = { it.id }) { item ->
+            items(recentDownloads.take(5), key = { it.id }) { item ->
                 DownloadItemCard(
                     download = item,
-                    onCancel = { viewModel.cancelDownload(it) },
-                    onDelete = { viewModel.deleteDownload(it) },
-                    onPlay = { playerManager.playMedia(item, recentDownloads, openFullscreenIfVideo = (item.mediaType == MediaType.VIDEO)) }
+                    onPause = { },
+                    onResume = { },
+                    onCancel = { },
+                    onPlay = { playerManager.playMedia(item) },
+                    onDelete = { }
                 )
             }
         }
     }
 
+    // Format Selection Modal Bottom Sheet
     if (showBottomSheet && uiState is HomeUiState.Success) {
-        val info = (uiState as HomeUiState.Success).videoInfo
+        val videoInfo = (uiState as HomeUiState.Success).videoInfo
         FormatSelectionSheet(
-            videoInfo = info,
             sheetState = sheetState,
+            videoInfo = videoInfo,
             onDismiss = { showBottomSheet = false },
             onStartDownload = { formatId, mediaType, audioExt ->
-                coroutineScope.launch {
-                    sheetState.hide()
-                    showBottomSheet = false
-                    viewModel.startDownload(info, formatId, mediaType, audioExt, autoStart = true)
-                    onNavigateToQueue()
-                }
-            },
-            onQueueDownload = { formatId, mediaType, audioExt ->
-                coroutineScope.launch {
-                    sheetState.hide()
-                    showBottomSheet = false
-                    viewModel.startDownload(info, formatId, mediaType, audioExt, autoStart = false)
-                }
+                viewModel.startDownload(videoInfo, formatId, mediaType, audioExt)
+                showBottomSheet = false
+                onNavigateToQueue()
             }
         )
     }
 
+    // Batch Download Modal
     if (showBatchModal && uiState is HomeUiState.Success) {
         val info = (uiState as HomeUiState.Success).videoInfo
         BatchDownloadModal(
-            playlistTitle = info.title,
             itemsList = listOf(info),
             onDismiss = { showBatchModal = false },
-            onBatchDownload = { selectedItems, formatId, mediaType, audioExt ->
+            onBatchDownload = { selectedItems, formatId, isAudio ->
                 selectedItems.forEach { item ->
-                    viewModel.startDownload(item, formatId, mediaType, audioExt, autoStart = true)
+                    viewModel.startDownload(
+                        videoInfo = item,
+                        formatId = formatId,
+                        mediaType = if (isAudio) MediaType.AUDIO else MediaType.VIDEO,
+                        audioExt = "mp3"
+                    )
                 }
                 showBatchModal = false
                 onNavigateToQueue()
@@ -459,6 +505,7 @@ fun HomeScreen(
         )
     }
 
+    // Audio Studio Equalizer Dialog
     if (showEqualizer) {
         EqualizerDialog(onDismiss = { showEqualizer = false })
     }
