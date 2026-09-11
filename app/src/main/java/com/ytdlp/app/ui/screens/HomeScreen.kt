@@ -477,7 +477,12 @@ fun HomeScreen(
             videoInfo = videoInfo,
             onDismiss = { showBottomSheet = false },
             onStartDownload = { formatId, mediaType, audioExt ->
-                viewModel.startDownload(videoInfo, formatId, mediaType, audioExt)
+                viewModel.startDownload(videoInfo, formatId, mediaType, audioExt, autoStart = true)
+                showBottomSheet = false
+                onNavigateToQueue()
+            },
+            onQueueDownload = { formatId, mediaType, audioExt ->
+                viewModel.startDownload(videoInfo, formatId, mediaType, audioExt, autoStart = false)
                 showBottomSheet = false
                 onNavigateToQueue()
             }
