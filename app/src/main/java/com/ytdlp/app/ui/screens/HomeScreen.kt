@@ -488,15 +488,16 @@ fun HomeScreen(
     if (showBatchModal && uiState is HomeUiState.Success) {
         val info = (uiState as HomeUiState.Success).videoInfo
         BatchDownloadModal(
+            playlistTitle = info.title,
             itemsList = listOf(info),
             onDismiss = { showBatchModal = false },
-            onBatchDownload = { selectedItems, formatId, isAudio ->
+            onBatchDownload = { selectedItems, formatId, mediaType, audioExt ->
                 selectedItems.forEach { item ->
                     viewModel.startDownload(
                         videoInfo = item,
                         formatId = formatId,
-                        mediaType = if (isAudio) MediaType.AUDIO else MediaType.VIDEO,
-                        audioExt = "mp3"
+                        mediaType = mediaType,
+                        audioExt = audioExt
                     )
                 }
                 showBatchModal = false
