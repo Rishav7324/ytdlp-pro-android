@@ -2,23 +2,34 @@ package com.ytdlp.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// --- NovaFetch Ultra iOS Liquid Glass 2.0 Palette ---
+// --- NovaFetch Penpot Light Liquid Glass Design System Tokens ---
 
-// Electric Cyan & Royal Sapphire Jewel Accents
-val NovaCyan = Color(0xFF00E5FF)
-val NovaCyanBright = Color(0xFF18FFFF)
-val NovaCyanDeep = Color(0xFF00B4D8)
-val NovaAzure = Color(0xFF0077B6)
+// Primary & Accent Jewel Colors (from Penpot 00 - Design System)
+val NovaPrimary = Color(0xFF088395)         // Penpot Nova Primary
+val NovaPrimarySoft = Color(0xFFE0F5F6)     // Penpot Primary Soft
+val NovaCyan = Color(0xFF5CE1E6)            // Penpot Accent Cyan Bright
+val NovaCyanDeep = Color(0xFF088395)        // Penpot Nova Primary Deep
+val NovaAzure = Color(0xFF0077B6)           // Penpot Royal Azure
 val NovaSapphire = Color(0xFF023E8A)
+val NovaCyanBright = Color(0xFF18FFFF)
 
 // Purples & Magentas (Apple Music Accents)
 val NovaViolet = Color(0xFF7928CA)
 val NovaPurpleLight = Color(0xFF9D4EDD)
 
-// Status & Accents
-val AccentGreen = Color(0xFF00E676)
-val AccentRed = Color(0xFFFF5252)
+// Status & Accents (Penpot Tokens)
+val AccentGreen = Color(0xFF10B981)         // Penpot Emerald Success
+val AccentRed = Color(0xFFE11D48)           // Penpot Accent Red
 val AccentOrange = Color(0xFFFF9100)
+
+// --- Light Mode (Penpot Light Liquid Glass Tokens) ---
+val BackgroundLight = Color(0xFFEEF7F7)          // Penpot Page Bg #EEF7F7
+val BackgroundLightSecondary = Color(0xFFE0F5F6) // Penpot Primary Soft #E0F5F6
+val SurfaceLight = Color(0xFFFFFFFF)             // Penpot Glass Surface #FFFFFF
+val SurfaceVariantLight = Color(0xFFE0F5F6)      // Penpot Soft Tint #E0F5F6
+val CardBorderLight = Color(0xFFCCE7E8)          // Penpot Border Glass #CCE7E8 / #D4E9EA
+val TextPrimaryLight = Color(0xFF0C2326)         // Penpot Text Main #0C2326
+val TextSecondaryLight = Color(0xFF506F72)       // Penpot Text Muted #506F72
 
 // --- Dark Mode (Obsidian Acrylic Glass) ---
 val BackgroundDark = Color(0xFF070F18)
@@ -29,18 +40,8 @@ val CardBorderDark = Color(0xFF2E4B66)
 val TextPrimaryDark = Color(0xFFF0F8FF)
 val TextSecondaryDark = Color(0xFF90A8BD)
 
-// --- Light Mode (Crystalline Frosted Ice) ---
-// High contrast, airy, perfectly readable with vivid jewel highlights
-val BackgroundLight = Color(0xFFF0F6FC)
-val BackgroundLightSecondary = Color(0xFFE5F1FA)
-val SurfaceLight = Color(0xFFFFFFFF)
-val SurfaceVariantLight = Color(0xFFE3F2FD)
-val CardBorderLight = Color(0xFFBCE3F7)
-val TextPrimaryLight = Color(0xFF0A1E2C)
-val TextSecondaryLight = Color(0xFF4A687D)
-
-// Platform brand colors
-val YouTubeRed = Color(0xFFFF0033)
+// Platform Brand Colors (from Penpot Specifications)
+val YouTubeRed = Color(0xFFE11D48)          // Penpot YouTube Red
 val InstagramPink = Color(0xFFE1306C)
 val TikTokCyan = Color(0xFF00F2FE)
 val TwitterBlue = Color(0xFF1DA1F2)
@@ -51,10 +52,9 @@ val BilibiliBlue = Color(0xFF00A1D6)
 
 // Compatibility aliases
 val NovaAqua = NovaCyan
-val NovaAquaSoft = Color(0xFFE0F7FA)
-val NovaAquaDeep = NovaCyanDeep
-val NovaInk = Color(0xFF0A1E2C)
-val NovaPrimary = NovaCyanDeep
+val NovaAquaSoft = NovaPrimarySoft
+val NovaAquaDeep = NovaPrimary
+val NovaInk = TextPrimaryLight
 val NovaPrimaryDark = NovaCyan
-val NovaSecondary = NovaAquaSoft
+val NovaSecondary = NovaPrimarySoft
 val NovaTertiary = NovaCyan

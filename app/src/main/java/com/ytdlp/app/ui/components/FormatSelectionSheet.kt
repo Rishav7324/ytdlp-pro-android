@@ -1,97 +1,238 @@
 package com.ytdlp.app.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Queue
-import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SheetState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.ytdlp.app.data.local.MediaType
 import com.ytdlp.app.engine.DownloadFormat
 import com.ytdlp.app.engine.VideoInfo
+import com.ytdlp.app.ui.theme.NovaCyan
+import com.ytdlp.app.ui.theme.NovaCyanDeep
+import com.ytdlp.app.ui.theme.NovaPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FormatSelectionSheet(videoInfo: VideoInfo, sheetState: SheetState, onDismiss: () -> Unit, onStartDownload: (String, MediaType, String) -> Unit, onQueueDownload: (String, MediaType, String) -> Unit) {
+fun FormatSelectionSheet(
+    videoInfo: VideoInfo,
+    sheetState: SheetState,
+    onDismiss: () -> Unit,
+    onStartDownload: (String, MediaType, String) -> Unit,
+    onQueueDownload: (String, MediaType, String) -> Unit
+) {
     var tab by remember { mutableIntStateOf(0) }
-    val videos = remember(videoInfo) { videoInfo.formats.filter { !it.isAudioOnly }.filter { it.resolution.endsWith("p") }.sortedByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 }.distinctBy { it.resolution }.take(8) }
-    val best = DownloadFormat("bestvideo+bestaudio/best", "mp4", "Best", "Highest available quality", false)
+    val isDark = isSystemInDarkTheme()
+    val videos = remember(videoInfo) {
+        videoInfo.formats.filter { !it.isAudioOnly }
+            .filter { it.resolution.endsWith("p") }
+            .sortedByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 }
+            .distinctBy { it.resolution }
+            .take(8)
+    }
+    val best = DownloadFormat("bestvideo+bestaudio/best", "mp4", "Best (Highest)", "Merged video + audio stream", false)
     val qualities = remember(videos) { listOf(best) + videos }
-    val audioOutputs = listOf("mp3", "m4a", "opus", "wav")
+    val audioOutputs = listOf("mp3", "m4a", "opus", "wav", "flac")
     var selectedVideo by remember(qualities) { mutableStateOf(qualities.first().formatId) }
     var selectedAudio by remember { mutableStateOf("mp3") }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)) {
-        LazyColumn(contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = if (isDark) Color(0xFF0C1926) else Color(0xFFEEF7F7),
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        LazyColumn(
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Header
             item {
-                Text("Download quality", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-                Text(videoInfo.title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = "Select Format & Quality",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Black
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = videoInfo.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+
+            // Segmented Tabs: Video & Audio vs Audio Only
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    FilterChip(selected = tab == 0, onClick = { tab = 0 }, label = { Text("Video") }, leadingIcon = { Icon(Icons.Default.Videocam, null, Modifier.size(18.dp)) }, modifier = Modifier.weight(1f))
-                    FilterChip(selected = tab == 1, onClick = { tab = 1 }, label = { Text("Audio") }, leadingIcon = { Icon(Icons.Default.Audiotrack, null, Modifier.size(18.dp)) }, modifier = Modifier.weight(1f))
-                }
-            }
-            if (tab == 0) {
-                item { Text("Resolution", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(qualities, key = { it.formatId }) { format -> QualityCard(format, selectedVideo == format.formatId) { selectedVideo = format.formatId } }
-            } else {
-                item { Text("Audio output", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-                items(audioOutputs, key = { it }) { ext -> AudioCard(ext, selectedAudio == ext) { selectedAudio = ext } }
-            }
-            item {
-                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .55f)), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Storage, null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(if (tab == 0) "Best available video + audio" else "High-quality audio extraction", fontWeight = FontWeight.SemiBold)
-                            Text("The engine will merge or extract automatically when required.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(if (isDark) Color(0xFF142436) else Color.White)
+                        .border(1.dp, if (isDark) Color(0xFF2E4B66) else Color(0xFFCCE7E8), RoundedCornerShape(22.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    val activeBrush = if (isDark) {
+                        Brush.horizontalGradient(listOf(Color(0xFF00E5FF).copy(alpha = 0.3f), Color(0xFF0077B6).copy(alpha = 0.4f)))
+                    } else {
+                        Brush.horizontalGradient(listOf(NovaCyan, NovaCyanDeep))
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(18.dp))
+                            .then(
+                                if (tab == 0) Modifier.background(activeBrush).border(1.dp, if (isDark) NovaCyan else Color.White, RoundedCornerShape(18.dp))
+                                else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(onClick = { tab = 0 }, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                "Video & Audio",
+                                fontWeight = FontWeight.Bold,
+                                color = if (tab == 0) (if (isDark) NovaCyan else Color(0xFF0C2326)) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(18.dp))
+                            .then(
+                                if (tab == 1) Modifier.background(activeBrush).border(1.dp, if (isDark) NovaCyan else Color.White, RoundedCornerShape(18.dp))
+                                else Modifier
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        TextButton(onClick = { tab = 1 }, modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                "Audio Only",
+                                fontWeight = FontWeight.Bold,
+                                color = if (tab == 1) (if (isDark) NovaCyan else Color(0xFF0C2326)) else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
             }
+
+            if (tab == 0) {
+                item {
+                    Text(
+                        "AVAILABLE VIDEO STREAMS",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) NovaCyan else NovaPrimary
+                    )
+                }
+                items(qualities, key = { it.formatId }) { format ->
+                    QualityCard(format, selectedVideo == format.formatId, isDark) {
+                        selectedVideo = format.formatId
+                    }
+                }
+            } else {
+                item {
+                    Text(
+                        "AUDIO ENCODING PRESETS",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isDark) NovaCyan else NovaPrimary
+                    )
+                }
+                items(audioOutputs, key = { it }) { ext ->
+                    AudioCard(ext, selectedAudio == ext, isDark) {
+                        selectedAudio = ext
+                    }
+                }
+            }
+
+            // Engine Notice Card
+            item {
+                LiquidGlassCard(
+                    shape = RoundedCornerShape(18.dp),
+                    elevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.Bolt, null, tint = if (isDark) NovaCyan else NovaPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (tab == 0) "Aria2c Multi-Thread Video Mux" else "FFmpeg Lossless Audio Extraction",
+                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                "Parallel streaming with automatic stream container assembly.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Action Buttons
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = { val type = if (tab == 0) MediaType.VIDEO else MediaType.AUDIO; onQueueDownload(if (tab == 0) selectedVideo else "bestaudio/best", type, selectedAudio) }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.Queue, null); Spacer(Modifier.width(6.dp)); Text("Queue") }
-                    Button(onClick = { val type = if (tab == 0) MediaType.VIDEO else MediaType.AUDIO; onStartDownload(if (tab == 0) selectedVideo else "bestaudio/best", type, selectedAudio) }, modifier = Modifier.weight(1f).height(52.dp), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("Download") }
+                    OutlinedButton(
+                        onClick = {
+                            val type = if (tab == 0) MediaType.VIDEO else MediaType.AUDIO
+                            onQueueDownload(if (tab == 0) selectedVideo else "bestaudio/best", type, selectedAudio)
+                        },
+                        modifier = Modifier.weight(1f).height(50.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.2.dp, if (isDark) NovaCyan.copy(alpha = 0.5f) else NovaPrimary.copy(alpha = 0.5f))
+                    ) {
+                        Icon(Icons.Rounded.Queue, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Add to Queue", fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            val type = if (tab == 0) MediaType.VIDEO else MediaType.AUDIO
+                            onStartDownload(if (tab == 0) selectedVideo else "bestaudio/best", type, selectedAudio)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
+                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = NovaCyanDeep),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NovaCyanDeep,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Download, null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Download Now", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
@@ -99,32 +240,124 @@ fun FormatSelectionSheet(videoInfo: VideoInfo, sheetState: SheetState, onDismiss
 }
 
 @Composable
-private fun QualityCard(format: DownloadFormat, selected: Boolean, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f))) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Videocam, null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+private fun QualityCard(format: DownloadFormat, selected: Boolean, isDark: Boolean, onClick: () -> Unit) {
+    LiquidGlassCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        elevation = if (selected) 4.dp else 1.dp
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (selected) (if (isDark) NovaCyan.copy(alpha = 0.25f) else Color(0xFFE0F5F6))
+                        else (if (isDark) Color(0xFF162A3E) else Color(0xFFF0F6FC))
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Videocam,
+                    null,
+                    tint = if (selected) (if (isDark) NovaCyan else NovaPrimary) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(format.resolution, fontWeight = FontWeight.ExtraBold)
-                Text(format.note.ifBlank { "Available stream" }, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(format.extension.uppercase() + (format.fps?.let { " • ${it}fps" } ?: ""), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(format.resolution, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleSmall)
+                    if (format.resolution.contains("2160") || format.resolution.contains("4K") || format.resolution.contains("1080")) {
+                        Spacer(Modifier.width(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isDark) NovaCyan.copy(alpha = 0.2f) else Color(0xFFE0F5F6))
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                if (format.resolution.contains("2160") || format.resolution.contains("4K")) "4K Ultra HD" else "Full HD",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDark) NovaCyan else NovaPrimary
+                            )
+                        }
+                    }
+                }
+                Text(
+                    format.note.ifBlank { "Available stream" },
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    format.extension.uppercase() + (format.fps?.let { " • ${it}fps" } ?: ""),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isDark) NovaCyan else NovaPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-            if (selected) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+            if (selected) {
+                Icon(Icons.Rounded.CheckCircle, null, tint = if (isDark) NovaCyan else NovaPrimary, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }
 
 @Composable
-private fun AudioCard(extension: String, selected: Boolean, onClick: () -> Unit) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .55f))) {
-        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Audiotrack, null, tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+private fun AudioCard(extension: String, selected: Boolean, isDark: Boolean, onClick: () -> Unit) {
+    LiquidGlassCard(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        elevation = if (selected) 4.dp else 1.dp
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(
+                        if (selected) (if (isDark) NovaCyan.copy(alpha = 0.25f) else Color(0xFFE0F5F6))
+                        else (if (isDark) Color(0xFF162A3E) else Color(0xFFF0F6FC))
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Rounded.Audiotrack,
+                    null,
+                    tint = if (selected) (if (isDark) NovaCyan else NovaPrimary) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(extension.uppercase(), fontWeight = FontWeight.ExtraBold)
-                Text(if (extension == "mp3") "Universal • high compatibility" else "High-quality converted audio", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(extension.uppercase(), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleSmall)
+                val note = when (extension) {
+                    "mp3" -> "Universal • 320kbps High Compatibility"
+                    "flac" -> "Lossless 24-bit Studio Quality"
+                    "opus" -> "Next-Gen Low Latency / High Efficiency"
+                    "m4a" -> "AAC Native Apple Ecosystem"
+                    else -> "High Quality Audio"
+                }
+                Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (selected) Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary)
+            if (selected) {
+                Icon(Icons.Rounded.CheckCircle, null, tint = if (isDark) NovaCyan else NovaPrimary, modifier = Modifier.size(22.dp))
+            }
         }
     }
 }

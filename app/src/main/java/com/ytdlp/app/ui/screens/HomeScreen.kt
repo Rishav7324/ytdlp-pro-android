@@ -242,31 +242,50 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(14.dp))
 
-                    // Quality Telemetry Glass Badges
+                    // Penpot Telemetry Chips: Aria2c Turbo • 4K Ultra HD • FFmpeg Core
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .liquidGlass(shape = RoundedCornerShape(16.dp), elevation = 2.dp)
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Hd, contentDescription = null, tint = AccentOrange, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("True 1080p / 4K Stream Merge", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        val chipBg = if (isDark) Color(0xFF142C3F) else Color(0xFFE0F5F6)
+                        val chipTextColor = if (isDark) NovaAqua else NovaAquaDeep
+
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(chipBg)
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("Aria2c: 16x Turbo", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = chipTextColor)
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Rounded.Equalizer, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("320kbps Studio Audio", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(chipBg)
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("4K Ultra HD", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = chipTextColor)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(chipBg)
+                                .padding(vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("FFmpeg 6.0 Core", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = chipTextColor)
                         }
                     }
                 }
             }
         }
 
-        // Downloader Input Glass Card
+        // Downloader Input Glass Card (Penpot Design)
         item {
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
@@ -306,6 +325,30 @@ fun HomeScreen(
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (isDark) Color(0xFF1B364D) else Color(0xFFE0F5F6))
+                                        .clickable {
+                                            runCatching {
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                                val clip = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()?.trim() ?: ""
+                                                if (clip.isNotBlank()) {
+                                                    viewModel.onUrlChanged(clip)
+                                                }
+                                            }
+                                        }
+                                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                                ) {
+                                    Text(
+                                        "PASTE",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp),
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (isDark) NovaAqua else NovaAquaDeep
+                                    )
+                                }
                             }
                         },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
@@ -318,6 +361,35 @@ fun HomeScreen(
                             }
                         )
                     )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Penpot "Fetch Media Analysis" Primary CTA Button
+                    Button(
+                        onClick = {
+                            keyboardController?.hide()
+                            if (urlInput.isNotBlank()) {
+                                viewModel.parseUrl(urlInput)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = NovaAquaDeep),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = NovaAquaDeep,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Fetch Media Analysis",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
                     // Clipboard Detect Floating Glass Chip
                     if (!clipboardDetectedUrl.isNullOrBlank() && urlInput.isBlank()) {

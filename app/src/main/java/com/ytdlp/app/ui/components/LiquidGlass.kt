@@ -50,16 +50,16 @@ fun Modifier.ambientLiquidBackground(
         Brush.verticalGradient(
             listOf(
                 Color(0xFF070F18),
-                Color(0xFF0B192A),
+                Color(0xFF0D1B2A),
                 Color(0xFF060D15)
             )
         )
     } else {
         Brush.verticalGradient(
             listOf(
-                Color(0xFFF1F7FD),
-                Color(0xFFE5F1FA),
-                Color(0xFFEDF5FC)
+                Color(0xFFEEF7F7),
+                Color(0xFFE0F5F6),
+                Color(0xFFF0F9F9)
             )
         )
     }
@@ -84,24 +84,24 @@ fun Modifier.liquidGlass(
         val baseBottom = Color(0xFF0A1522).copy(alpha = 0.88f)
         Brush.verticalGradient(listOf(baseTop, baseBottom))
     } else {
-        val baseTop = tintColor?.copy(alpha = 0.20f) ?: Color.White.copy(alpha = 0.92f)
-        val baseBottom = Color(0xFFEAF5FD).copy(alpha = 0.78f)
+        val baseTop = tintColor?.copy(alpha = 0.20f) ?: Color.White.copy(alpha = 0.94f)
+        val baseBottom = Color(0xFFEEF7F7).copy(alpha = 0.88f)
         Brush.verticalGradient(listOf(baseTop, baseBottom))
     }
 
-    // Beveled specular rim reflection
+    // Beveled specular rim reflection (from Penpot Border Glass tokens)
     val borderBrush = Brush.linearGradient(
         listOf(
             if (isDark) Color.White.copy(alpha = 0.55f * borderAlpha) else Color.White.copy(alpha = 0.98f),
-            if (isDark) NovaCyan.copy(alpha = 0.40f * borderAlpha) else Color(0xFF00B4D8).copy(alpha = 0.45f),
-            if (isDark) Color.White.copy(alpha = 0.15f * borderAlpha) else Color.White.copy(alpha = 0.30f)
+            if (isDark) NovaCyan.copy(alpha = 0.40f * borderAlpha) else Color(0xFFCCE7E8).copy(alpha = 0.70f),
+            if (isDark) Color.White.copy(alpha = 0.15f * borderAlpha) else Color.White.copy(alpha = 0.40f)
         )
     )
 
     val ambientGlow = if (isDark) {
-        tintColor?.copy(alpha = 0.25f) ?: Color(0xFF00E5FF).copy(alpha = 0.12f)
+        tintColor?.copy(alpha = 0.25f) ?: Color(0xFF5CE1E6).copy(alpha = 0.14f)
     } else {
-        Color(0xFF0077B6).copy(alpha = 0.12f)
+        Color(0xFF088395).copy(alpha = 0.14f)
     }
 
     return this

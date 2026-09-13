@@ -1,12 +1,16 @@
 package com.ytdlp.app.ui.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.FileDownloadDone
+import androidx.compose.material.icons.rounded.PauseCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,13 +19,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ytdlp.app.ui.components.DownloadItemCard
 import com.ytdlp.app.ui.components.LiquidGlassCard
+import com.ytdlp.app.ui.components.LiquidGlassPill
+import com.ytdlp.app.ui.components.ambientLiquidBackground
 import com.ytdlp.app.ui.components.liquidGlass
+import com.ytdlp.app.ui.theme.NovaCyan
+import com.ytdlp.app.ui.theme.NovaCyanDeep
+import com.ytdlp.app.ui.theme.NovaPrimary
 import com.ytdlp.app.viewmodel.QueueViewModel
 
 @Composable
@@ -29,29 +41,113 @@ fun QueueScreen(
     viewModel: QueueViewModel = viewModel()
 ) {
     val activeQueue by viewModel.activeQueue.collectAsState()
+    val isDark = isSystemInDarkTheme()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .ambientLiquidBackground()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
         Spacer(modifier = Modifier.height(12.dp))
 
-        // iOS Header
-        Text(
-            text = "Download Queue",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black
-        )
-        Text(
-            text = "${activeQueue.size} items active",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
-        )
+        // iOS Header with Pause All (Penpot Design)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Download Queue",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = "${activeQueue.size} Active Tasks",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isDark) NovaCyan else NovaPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            if (activeQueue.isNotEmpty()) {
+                LiquidGlassPill(
+                    onClick = { /* pause all */ },
+                    elevation = 2.dp
+                ) {
+                    Icon(Icons.Rounded.PauseCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "PAUSE ALL",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // Penpot Aria2c Turbo Status Banner
+        if (activeQueue.isNotEmpty()) {
+            LiquidGlassCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                elevation = 4.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(NovaCyan, NovaCyanDeep))),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Rounded.Bolt,
+                            contentDescription = null,
+                            tint = Color(0xFF041724),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Aria2c Turbo Engine Active",
+                            style = MaterialTheme.typography.titleSmall.copy(fontSize = 12.5.sp),
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "16 Parallel Chunk Streaming",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isDark) Color(0xFF142B3D) else Color(0xFFE0F5F6))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "16x TURBO",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                            fontWeight = FontWeight.Black,
+                            color = if (isDark) NovaCyan else NovaPrimary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+        }
 
         if (activeQueue.isEmpty()) {
             Box(

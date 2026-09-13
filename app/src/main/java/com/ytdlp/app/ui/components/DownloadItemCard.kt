@@ -86,15 +86,15 @@ fun DownloadItemCard(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.25f))
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(if (isDark) Color(0xFF162B3D) else Color(0xFFD4E9EA))
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(animatedProgress)
                                     .fillMaxHeight()
-                                    .clip(RoundedCornerShape(4.dp))
+                                    .clip(RoundedCornerShape(3.dp))
                                     .background(
                                         Brush.horizontalGradient(
                                             listOf(NovaCyan, NovaCyanDeep)
@@ -103,29 +103,62 @@ fun DownloadItemCard(
                             )
                         }
 
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // Penpot 16-Thread Multi-Chunk Visualizer
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            val activeChunks = ((download.progress / 100f) * 16).toInt().coerceIn(0, 16)
+                            for (i in 0 until 16) {
+                                val isFilled = i < activeChunks
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clip(RoundedCornerShape(1.5.dp))
+                                        .background(
+                                            if (isFilled) NovaCyanDeep else if (isDark) Color(0xFF1A3347) else Color(0xFFCCE7E8)
+                                        )
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${download.progress.toInt()}%",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = "${download.progress.toInt()}%" + if (download.fileSize > 0) " • ${download.formattedFileSize()}" else "",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 fontWeight = FontWeight.ExtraBold,
                                 color = NovaCyanDeep
                             )
                             if (download.speed.isNotBlank()) {
-                                Text(
-                                    text = download.speed,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(if (isDark) Color(0xFF142C3F) else Color(0xFFE0F5F6))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = download.speed,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                        fontWeight = FontWeight.Bold,
+                                        color = NovaCyanDeep
+                                    )
+                                }
                             }
                             if (download.eta.isNotBlank()) {
                                 Text(
                                     text = "ETA ${download.eta}",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -368,6 +401,33 @@ private fun MediaThumbnailView(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
+        }
+
+        // Penpot duration badge overlay (e.g. 14:28)
+        if (download.durationSeconds > 0) {
+            val hrs = download.durationSeconds / 3600
+            val mins = (download.durationSeconds % 3600) / 60
+            val secs = download.durationSeconds % 60
+            val formatted = if (hrs > 0) {
+                String.format("%d:%02d:%02d", hrs, mins, secs)
+            } else {
+                String.format("%02d:%02d", mins, secs)
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(3.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(Color.Black.copy(alpha = 0.78f))
+                    .padding(horizontal = 4.dp, vertical = 1.5.dp)
+            ) {
+                Text(
+                    text = formatted,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.5.sp),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }

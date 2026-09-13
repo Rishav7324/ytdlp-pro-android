@@ -178,7 +178,118 @@ fun LibraryScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Penpot Device Storage Breakdown Glass Card
+        val freeBytes = remember {
+            runCatching { android.os.Environment.getDataDirectory().freeSpace }.getOrDefault(50L * 1024 * 1024 * 1024)
+        }
+        val freeGb = (freeBytes / (1024f * 1024f * 1024f)).toInt()
+        val totalBytesSaved = completedList.sumOf { it.fileSize }
+        val savedMb = (totalBytesSaved / (1024f * 1024f)).toInt()
+        val formattedSaved = if (savedMb >= 1000) String.format("%.1f GB", savedMb / 1024f) else "$savedMb MB"
+
+        LiquidGlassCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = 3.dp
+        ) {
+            Column(modifier = Modifier.padding(12.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Rounded.Storage,
+                            contentDescription = null,
+                            tint = if (isDark) NovaCyan else NovaCyanDeep,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Device Storage",
+                            style = MaterialTheme.typography.titleSmall.copy(fontSize = 12.5.sp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        text = "$freeGb GB Free",
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                        color = if (isDark) NovaCyan else NovaCyanDeep,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Multi-Segment Storage Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(5.dp)
+                        .clip(CircleShape)
+                        .background(if (isDark) Color(0xFF162B3D) else Color(0xFFCCE7E8))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(0.18f)
+                            .background(if (isDark) NovaCyan else NovaCyanDeep)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(0.32f)
+                            .background(if (isDark) Color(0xFF33556E) else Color(0xFF506F72))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .weight(0.50f)
+                            .background(Color.Transparent)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(if (isDark) NovaCyan else NovaCyanDeep))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "NovaFetch ($formattedSaved)",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                            color = inactiveTextColor
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(if (isDark) Color(0xFF33556E) else Color(0xFF506F72)))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Used Apps",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                            color = inactiveTextColor
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(5.dp).clip(CircleShape).background(if (isDark) Color(0xFF162B3D) else Color(0xFFCCE7E8)))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Free ($freeGb GB)",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.5.sp),
+                            color = inactiveTextColor
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // iOS Liquid Glass Segmented Control
         LiquidGlassCard(
