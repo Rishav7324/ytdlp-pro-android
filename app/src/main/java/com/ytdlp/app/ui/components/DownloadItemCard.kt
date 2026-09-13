@@ -48,6 +48,8 @@ fun DownloadItemCard(
     onShare: ((DownloadEntity) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isDark = isSystemInDarkTheme()
+
     LiquidGlassCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(22.dp),
