@@ -182,12 +182,12 @@ fun LibraryScreen(
 
         // Penpot Device Storage Breakdown Glass Card
         val freeBytes = remember {
-            runCatching { android.os.Environment.getDataDirectory().freeSpace }.getOrDefault(50L * 1024 * 1024 * 1024)
+            runCatching { android.os.Environment.getDataDirectory().freeSpace }.getOrDefault(50L * 1024L * 1024L * 1024L)
         }
-        val freeGb = (freeBytes / (1024f * 1024f * 1024f)).toInt()
+        val freeGb = (freeBytes / (1024L * 1024L * 1024L)).toInt()
         val totalBytesSaved = completedList.sumOf { it.fileSize }
-        val savedMb = (totalBytesSaved / (1024f * 1024f)).toInt()
-        val formattedSaved = if (savedMb >= 1000) String.format("%.1f GB", savedMb / 1024f) else "$savedMb MB"
+        val savedMb = (totalBytesSaved / (1024L * 1024L)).toInt()
+        val formattedSaved = if (savedMb >= 1024) String.format(java.util.Locale.US, "%.1f GB", savedMb / 1024.0) else "$savedMb MB"
 
         LiquidGlassCard(
             modifier = Modifier.fillMaxWidth(),
