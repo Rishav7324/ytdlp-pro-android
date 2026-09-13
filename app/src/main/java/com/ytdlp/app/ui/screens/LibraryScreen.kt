@@ -39,6 +39,12 @@ import com.ytdlp.app.ui.components.liquidGlass
 import com.ytdlp.app.viewmodel.LibraryFilter
 import com.ytdlp.app.viewmodel.LibraryViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.ui.graphics.Brush
+import com.ytdlp.app.ui.components.ambientLiquidBackground
+import com.ytdlp.app.ui.theme.NovaCyan
+import com.ytdlp.app.ui.theme.NovaCyanDeep
+import com.ytdlp.app.ui.theme.NovaAzure
 import java.io.File
 
 @Composable
@@ -85,9 +91,35 @@ fun LibraryScreen(
         matchesFilter && matchesQuery
     }
 
+    val isDark = isSystemInDarkTheme()
+    val activePillBrush = if (isDark) {
+        Brush.horizontalGradient(
+            listOf(
+                Color(0xFF00E5FF).copy(alpha = 0.35f),
+                Color(0xFF0077B6).copy(alpha = 0.50f)
+            )
+        )
+    } else {
+        Brush.horizontalGradient(
+            listOf(
+                NovaCyan,
+                NovaCyanDeep
+            )
+        )
+    }
+    val activeBorderBrush = Brush.linearGradient(
+        listOf(
+            if (isDark) Color(0xFF00E5FF).copy(alpha = 0.6f) else Color.White,
+            if (isDark) Color.White.copy(alpha = 0.2f) else Color(0xFF00B4D8).copy(alpha = 0.5f)
+        )
+    )
+    val activeTextColor = if (isDark) Color(0xFF00E5FF) else Color(0xFF0A1E2C)
+    val inactiveTextColor = if (isDark) Color(0xFF90A8BD) else Color(0xFF4A687D)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .ambientLiquidBackground()
             .statusBarsPadding()
             .padding(horizontal = 16.dp)
     ) {
@@ -108,7 +140,7 @@ fun LibraryScreen(
                 Text(
                     text = "${displayList.size} files available",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = if (isDark) NovaCyan else NovaCyanDeep,
                     fontWeight = FontWeight.SemiBold
                 )
             }
@@ -124,7 +156,7 @@ fun LibraryScreen(
                         Icon(
                             Icons.Rounded.Refresh,
                             contentDescription = "Scan Device Media",
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = if (isDark) NovaCyan else NovaCyanDeep,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -168,17 +200,21 @@ fun LibraryScreen(
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            if (activeTab == 0) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent
+                        .then(
+                            if (activeTab == 0) {
+                                Modifier
+                                    .background(activePillBrush, RoundedCornerShape(20.dp))
+                                    .border(1.2.dp, activeBorderBrush, RoundedCornerShape(20.dp))
+                            } else Modifier
                         )
                         .clickable { activeTab = 0 },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Downloads (${completedList.size})",
-                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-                        fontWeight = if (activeTab == 0) FontWeight.ExtraBold else FontWeight.Normal,
-                        color = if (activeTab == 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp),
+                        fontWeight = if (activeTab == 0) FontWeight.ExtraBold else FontWeight.SemiBold,
+                        color = if (activeTab == 0) activeTextColor else inactiveTextColor
                     )
                 }
 
@@ -188,17 +224,21 @@ fun LibraryScreen(
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            if (activeTab == 1) MaterialTheme.colorScheme.primary.copy(alpha = 0.25f) else Color.Transparent
+                        .then(
+                            if (activeTab == 1) {
+                                Modifier
+                                    .background(activePillBrush, RoundedCornerShape(20.dp))
+                                    .border(1.2.dp, activeBorderBrush, RoundedCornerShape(20.dp))
+                            } else Modifier
                         )
                         .clickable { activeTab = 1 },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "Device Storage",
-                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.sp),
-                        fontWeight = if (activeTab == 1) FontWeight.ExtraBold else FontWeight.Normal,
-                        color = if (activeTab == 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        style = MaterialTheme.typography.labelMedium.copy(fontSize = 12.5.sp),
+                        fontWeight = if (activeTab == 1) FontWeight.ExtraBold else FontWeight.SemiBold,
+                        color = if (activeTab == 1) activeTextColor else inactiveTextColor
                     )
                 }
             }
@@ -210,14 +250,24 @@ fun LibraryScreen(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { viewModel.setSearchQuery(it) },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .liquidGlass(shape = RoundedCornerShape(18.dp), elevation = 3.dp),
             shape = RoundedCornerShape(18.dp),
-            placeholder = { Text("Search songs, videos or creators...") },
-            leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+            placeholder = { Text("Search songs, videos or creators...", color = inactiveTextColor) },
+            leadingIcon = {
+                Icon(
+                    Icons.Rounded.Search,
+                    contentDescription = null,
+                    tint = if (isDark) NovaCyan else NovaCyanDeep
+                )
+            },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                focusedBorderColor = if (isDark) NovaCyan else NovaCyanDeep,
+                unfocusedBorderColor = Color.Transparent,
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent
             )
         )
 

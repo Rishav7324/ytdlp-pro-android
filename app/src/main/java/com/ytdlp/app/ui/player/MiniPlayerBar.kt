@@ -75,27 +75,55 @@ fun MiniPlayerBar() {
                         .padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Artwork Thumbnail
+                    // Artwork Thumbnail with Video Frame Decoding and Jewel Fallback
+                    val isVideo = item.mediaType == MediaType.VIDEO
+                    val imageModel = remember(item.thumbnailUrl, item.targetPath) {
+                        when {
+                            item.thumbnailUrl.isNotBlank() -> item.thumbnailUrl
+                            item.targetPath.isNotBlank() -> java.io.File(item.targetPath)
+                            else -> null
+                        }
+                    }
+                    val request = remember(imageModel) {
+                        if (imageModel != null) {
+                            coil.request.ImageRequest.Builder(context)
+                                .data(imageModel)
+                                .apply {
+                                    if (isVideo) {
+                                        videoFrameMillis(1500)
+                                    }
+                                }
+                                .crossfade(true)
+                                .build()
+                        } else null
+                    }
+
+                    val thumbGradient = if (isVideo) {
+                        Brush.linearGradient(listOf(Color(0xFF0077B6), Color(0xFF00B4D8)))
+                    } else {
+                        Brush.linearGradient(listOf(Color(0xFF6A0DAD), Color(0xFF9D4EDD)))
+                    }
+
                     Box(
                         modifier = Modifier
-                            .size(46.dp)
+                            .size(48.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(Color.Black.copy(alpha = 0.4f)),
+                            .background(thumbGradient),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (item.thumbnailUrl.isNotBlank()) {
+                        Icon(
+                            imageVector = if (isVideo) Icons.Rounded.PlayCircle else Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = Color.White.copy(alpha = 0.85f),
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        if (request != null) {
                             AsyncImage(
-                                model = item.thumbnailUrl,
+                                model = request,
                                 contentDescription = item.title,
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Icon(
-                                imageVector = if (item.mediaType == MediaType.VIDEO) Icons.Rounded.Videocam else Icons.Rounded.MusicNote,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }

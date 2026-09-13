@@ -66,6 +66,7 @@ import com.ytdlp.app.ui.components.LiquidGlassPill
 import com.ytdlp.app.ui.components.VideoPreviewCard
 import com.ytdlp.app.ui.components.batch.BatchDownloadModal
 import com.ytdlp.app.ui.components.equalizer.EqualizerDialog
+import com.ytdlp.app.ui.components.ambientLiquidBackground
 import com.ytdlp.app.ui.components.liquidGlass
 import com.ytdlp.app.ui.theme.AccentOrange
 import com.ytdlp.app.ui.theme.InstagramPink
@@ -131,6 +132,7 @@ fun HomeScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
+            .ambientLiquidBackground()
             .statusBarsPadding()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),

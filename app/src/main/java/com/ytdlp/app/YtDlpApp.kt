@@ -1,7 +1,9 @@
 package com.ytdlp.app
 
 import android.app.Application
-import android.util.Log
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.decode.VideoFrameDecoder
 import com.ytdlp.app.data.local.AppDatabase
 import com.ytdlp.app.data.preferences.AppPreferences
 import com.ytdlp.app.data.repository.DownloadRepository
@@ -14,7 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class YtDlpApp : Application() {
+class YtDlpApp : Application(), ImageLoaderFactory {
     lateinit var database: AppDatabase
         private set
     lateinit var preferences: AppPreferences
@@ -51,6 +53,15 @@ class YtDlpApp : Application() {
     }
 
     suspend fun updateEngine(): Result<Unit> = YtDlpEngine.updateEngine(this).map { }
+
+    override fun newImageLoader(): ImageLoader {
+        return ImageLoader.Builder(this)
+            .components {
+                add(VideoFrameDecoder.Factory())
+            }
+            .crossfade(true)
+            .build()
+    }
 
     companion object {
         lateinit var instance: YtDlpApp

@@ -53,43 +53,43 @@ fun LiquidGlassNavigationBar(
     val isDark = isSystemInDarkTheme()
     val shape = RoundedCornerShape(32.dp)
 
+    // Dense frosted glass prevents underlying list text from bleeding through
     val bgBrush = if (isDark) {
         Brush.verticalGradient(
             listOf(
-                Color(0xFF132325).copy(alpha = 0.82f),
-                Color(0xFF0C1618).copy(alpha = 0.92f)
+                Color(0xFF0D1B2A).copy(alpha = 0.96f),
+                Color(0xFF070F18).copy(alpha = 0.98f)
             )
         )
     } else {
         Brush.verticalGradient(
             listOf(
-                Color.White.copy(alpha = 0.88f),
-                Color(0xFFE8F6F6).copy(alpha = 0.78f)
+                Color.White.copy(alpha = 0.97f),
+                Color(0xFFE8F4FD).copy(alpha = 0.95f)
             )
         )
     }
 
-    val borderBrush = Brush.verticalGradient(
+    val borderBrush = Brush.linearGradient(
         listOf(
-            if (isDark) Color.White.copy(alpha = 0.35f) else Color.White.copy(alpha = 0.95f),
-            if (isDark) Color(0xFF5C9FA2).copy(alpha = 0.15f) else Color.White.copy(alpha = 0.40f)
+            if (isDark) Color(0xFF00E5FF).copy(alpha = 0.50f) else Color.White,
+            if (isDark) Color.White.copy(alpha = 0.20f) else Color(0xFF00B4D8).copy(alpha = 0.45f)
         )
     )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 6.dp)
             .shadow(
-                elevation = 18.dp,
+                elevation = 20.dp,
                 shape = shape,
-                ambientColor = if (isDark) Color.Black.copy(alpha = 0.6f) else Color(0xFF5C9FA2).copy(alpha = 0.25f),
-                spotColor = Color(0xFF5C9FA2).copy(alpha = 0.2f)
+                ambientColor = if (isDark) Color.Black.copy(alpha = 0.7f) else Color(0xFF0077B6).copy(alpha = 0.20f),
+                spotColor = if (isDark) Color(0xFF00E5FF).copy(alpha = 0.35f) else Color(0xFF00B4D8).copy(alpha = 0.28f)
             )
             .background(bgBrush, shape)
-            .border(1.dp, borderBrush, shape)
+            .border(1.2.dp, borderBrush, shape)
             .clip(shape)
-            .padding(6.dp)
+            .padding(vertical = 4.dp, horizontal = 4.dp)
     ) {
         Row(
             modifier = Modifier
@@ -124,7 +124,7 @@ private fun RowScope.GlassNavButton(
     )
 
     val activeColor = if (isDark) NovaAqua else NovaAquaDeep
-    val inactiveColor = if (isDark) Color(0xFF88A5A7) else Color(0xFF678587)
+    val inactiveColor = if (isDark) Color(0xFF90A8BD) else Color(0xFF4A687D)
 
     val iconTint by animateColorAsState(
         targetValue = if (selected) activeColor else inactiveColor,
@@ -132,17 +132,17 @@ private fun RowScope.GlassNavButton(
         label = "nav-tint-${item.route}"
     )
 
-    val pillShape = RoundedCornerShape(22.dp)
+    val pillShape = RoundedCornerShape(20.dp)
     val interactionSource = remember { MutableInteractionSource() }
 
     val pillBackground = if (selected) {
-        if (isDark) Color(0xFF1E393C).copy(alpha = 0.75f) else Color.White.copy(alpha = 0.85f)
+        if (isDark) Color(0xFF162A3E).copy(alpha = 0.90f) else Color(0xFFE3F3FD).copy(alpha = 0.95f)
     } else {
         Color.Transparent
     }
 
     val pillBorder = if (selected) {
-        if (isDark) Color.White.copy(alpha = 0.25f) else Color.White.copy(alpha = 0.85f)
+        if (isDark) Color(0xFF00E5FF).copy(alpha = 0.35f) else Color(0xFF00B4D8).copy(alpha = 0.40f)
     } else {
         Color.Transparent
     }
@@ -152,7 +152,6 @@ private fun RowScope.GlassNavButton(
             .weight(1f)
             .fillMaxHeight()
             .padding(horizontal = 2.dp)
-            .scale(scale)
             .clip(pillShape)
             .background(pillBackground, pillShape)
             .border(1.dp, pillBorder, pillShape)
@@ -164,6 +163,7 @@ private fun RowScope.GlassNavButton(
         contentAlignment = Alignment.Center
     ) {
         Column(
+            modifier = Modifier.scale(scale),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -178,15 +178,15 @@ private fun RowScope.GlassNavButton(
                 text = item.label,
                 color = iconTint,
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                    fontSize = 10.5.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                 )
             )
             if (selected) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
-                        .size(width = 12.dp, height = 3.dp)
+                        .size(width = 14.dp, height = 3.dp)
                         .clip(CircleShape)
                         .background(activeColor)
                 )
