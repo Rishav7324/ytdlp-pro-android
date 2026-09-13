@@ -40,3 +40,17 @@ data class DownloadEntity(
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null
 )
+
+val DownloadEntity.fileSize: Long
+    get() = if (downloadedBytes > 0) downloadedBytes else fileSizeApprox
+
+fun DownloadEntity.formattedFileSize(): String {
+    val size = fileSize
+    return when {
+        size >= 1024L * 1024L * 1024L -> String.format(java.util.Locale.US, "%.2f GB", size / (1024.0 * 1024.0 * 1024.0))
+        size >= 1024L * 1024L -> String.format(java.util.Locale.US, "%.1f MB", size / (1024.0 * 1024.0))
+        size >= 1024L -> "${size / 1024L} KB"
+        size > 0 -> "$size B"
+        else -> ""
+    }
+}

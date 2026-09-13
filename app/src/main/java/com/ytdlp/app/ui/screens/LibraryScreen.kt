@@ -29,6 +29,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ytdlp.app.data.local.DownloadEntity
 import com.ytdlp.app.data.local.MediaType
+import com.ytdlp.app.data.local.fileSize
 import com.ytdlp.app.data.scanner.LocalMediaScanner
 import com.ytdlp.app.player.MediaPlayerManager
 import com.ytdlp.app.ui.components.AppleSpringSpec

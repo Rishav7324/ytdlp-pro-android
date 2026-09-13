@@ -31,6 +31,8 @@ import coil.request.videoFrameMillis
 import com.ytdlp.app.data.local.DownloadEntity
 import com.ytdlp.app.data.local.DownloadStatus
 import com.ytdlp.app.data.local.MediaType
+import com.ytdlp.app.data.local.fileSize
+import com.ytdlp.app.data.local.formattedFileSize
 import com.ytdlp.app.ui.theme.AccentGreen
 import com.ytdlp.app.ui.theme.AccentRed
 import com.ytdlp.app.ui.theme.NovaCyan
