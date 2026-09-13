@@ -32,12 +32,8 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.rounded.ContentPaste
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Equalizer
-import androidx.compose.material.icons.rounded.Hd
-import androidx.compose.material.icons.rounded.PlaylistPlay
-import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,6 +88,7 @@ fun HomeScreen(
     onNavigateToBrowser: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val isDark = isSystemInDarkTheme()
     val playerManager = remember { MediaPlayerManager.getInstance(context) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val uiState by viewModel.uiState.collectAsState()
