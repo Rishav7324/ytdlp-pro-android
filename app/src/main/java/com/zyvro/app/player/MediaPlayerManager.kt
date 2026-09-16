@@ -121,7 +121,26 @@ class MediaPlayerManager private constructor(context: Context) {
                     AudioFxManager.instance.initAudioEffects(player.audioSessionId)
                     _fxActive.value = AudioFxManager.instance.hasActiveSession()
                 } else if (state == Player.STATE_ENDED) {
-                    playNext()
+                    // Native playlist already auto-advanced; just drop the bookmark.
+                    persistResumePosition()
+                }
+            }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                // Fires for native auto-advance AND manual next/previous: keep app
+                // state (current item, stats, A-B loop) in sync with the player.
+                // PLAYLIST_CHANGED is skipped — openQueue() sets state itself.
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
+                    reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK
+                ) {
+                    val id = mediaItem?.mediaId?.toLongOrNull()
+                    val entity = _queue.value.firstOrNull { it.id == id } ?: return
+                    _currentMedia.value = entity
+                    scope.launch {
+                        runCatching { YtDlpApp.instance.repository.recordPlay(entity.id) }
+                    }
+                    clearAbLoop()
+                    _playerError.value = null
                 }
             }
 
@@ -267,26 +286,26 @@ class MediaPlayerManager private constructor(context: Context) {
     }
 
     fun playMedia(entity: DownloadEntity, playlist: List<DownloadEntity> = emptyList(), openFullscreenIfVideo: Boolean = true) {
-        val file = File(entity.targetPath)
-        val uri = if (entity.targetPath.startsWith("content://")) {
-            Uri.parse(entity.targetPath)
-        } else if (file.exists()) {
-            Uri.fromFile(file)
-        } else if (entity.url.startsWith("http://") || entity.url.startsWith("https://")) {
-            Uri.parse(entity.url)
-        } else {
-            return
+        val newQueue = when {
+            playlist.isNotEmpty() -> playlist
+            _queue.value.any { it.id == entity.id } -> _queue.value
+            else -> listOf(entity) + _queue.value
         }
+        openQueue(newQueue, entity, openFullscreenIfVideo)
+    }
 
-        _currentMedia.value = entity
-        // Retro-style smart stats: no-op for non-DB (device) items.
+    /** Loads the app queue into ExoPlayer natively so advance/repeat/shuffle
+     *  are handled by the engine (reliable auto-next, gapless transitions). */
+    private fun openQueue(queue: List<DownloadEntity>, start: DownloadEntity, openFullscreenIfVideo: Boolean) {
+        val items = queue.mapNotNull { e -> buildMirrorItem(e)?.let { e to it } }
+        if (items.isEmpty()) return
+        val startIndex = items.indexOfFirst { it.first.id == start.id }.takeIf { it >= 0 } ?: 0
+        val startEntity = items[startIndex].first
+
+        _queue.value = items.map { it.first }
+        _currentMedia.value = startEntity
         scope.launch {
-            runCatching { YtDlpApp.instance.repository.recordPlay(entity.id) }
-        }
-        if (playlist.isNotEmpty()) {
-            _queue.value = playlist
-        } else if (!_queue.value.contains(entity)) {
-            _queue.value = listOf(entity) + _queue.value
+            runCatching { YtDlpApp.instance.repository.recordPlay(startEntity.id) }
         }
 
         clearAbLoop()
@@ -294,23 +313,38 @@ class MediaPlayerManager private constructor(context: Context) {
         _audioTracks.value = emptyList()
         _subtitleTracks.value = emptyList()
         _subtitlesEnabled.value = true
-        val mediaItem = MediaItem.Builder()
-            .setUri(uri)
-            .setSubtitleConfigurations(findSidecarSubtitles(file))
-            .build()
-        player.setMediaItem(mediaItem)
-        player.prepare()
         player.playWhenReady = true
+        player.setMediaItems(items.map { it.second }, startIndex, 0L)
+        player.prepare()
         _playbackSpeed.value = 1.0f
         player.playbackParameters = PlaybackParameters(1.0f)
 
-        if (entity.mediaType == MediaType.VIDEO) {
+        if (startEntity.mediaType == MediaType.VIDEO) {
             if (openFullscreenIfVideo) {
                 _isVideoExpanded.value = true
             }
         } else {
             _isAudioSheetOpen.value = true
         }
+    }
+
+    private fun resolveUri(entity: DownloadEntity): Uri? {
+        val file = File(entity.targetPath)
+        return when {
+            entity.targetPath.startsWith("content://") -> Uri.parse(entity.targetPath)
+            file.exists() -> Uri.fromFile(file)
+            entity.url.startsWith("http://") || entity.url.startsWith("https://") -> Uri.parse(entity.url)
+            else -> null
+        }
+    }
+
+    private fun buildMirrorItem(entity: DownloadEntity): MediaItem? {
+        val uri = resolveUri(entity) ?: return null
+        return MediaItem.Builder()
+            .setMediaId(entity.id.toString())
+            .setUri(uri)
+            .setSubtitleConfigurations(findSidecarSubtitles(File(entity.targetPath)))
+            .build()
     }
 
     /**
@@ -339,23 +373,16 @@ class MediaPlayerManager private constructor(context: Context) {
         }
     }
 
+    /** Native advance: the engine walks the mirrored playlist (repeat-aware). */
     fun playNext() {
-        val q = _queue.value
-        val current = _currentMedia.value ?: return
-        val idx = q.indexOfFirst { it.id == current.id }
-        if (idx != -1 && idx + 1 < q.size) {
-            playMedia(q[idx + 1], q, openFullscreenIfVideo = false)
-        } else if (_repeatMode.value == Player.REPEAT_MODE_ALL && q.isNotEmpty()) {
-            playMedia(q[0], q, openFullscreenIfVideo = false)
+        if (player.hasNextMediaItem()) {
+            player.seekToNextMediaItem()
         }
     }
 
     fun playPrevious() {
-        val q = _queue.value
-        val current = _currentMedia.value ?: return
-        val idx = q.indexOfFirst { it.id == current.id }
-        if (idx > 0) {
-            playMedia(q[idx - 1], q, openFullscreenIfVideo = false)
+        if (player.hasPreviousMediaItem()) {
+            player.seekToPreviousMediaItem()
         } else {
             seekTo(0L)
         }
@@ -363,9 +390,7 @@ class MediaPlayerManager private constructor(context: Context) {
 
     fun toggleShuffle() {
         _isShuffleEnabled.value = !_isShuffleEnabled.value
-        if (_isShuffleEnabled.value) {
-            _queue.value = _queue.value.shuffled()
-        }
+        player.shuffleModeEnabled = _isShuffleEnabled.value
     }
 
     /** Retro-style manual queue reorder (drag-equivalent via up/down controls). */
@@ -375,6 +400,16 @@ class MediaPlayerManager private constructor(context: Context) {
         val moved = q.removeAt(fromIndex)
         q.add(toIndex, moved)
         _queue.value = q
+        // Re-mirror around the currently playing item without interrupting it.
+        val currentId = _currentMedia.value?.id?.toString()
+        val items = q.mapNotNull { buildMirrorItem(it) }
+        if (items.isEmpty()) return
+        val idx = items.indexOfFirst { it.mediaId == currentId }.takeIf { it >= 0 } ?: 0
+        val pos = player.currentPosition.coerceAtLeast(0L)
+        val wasPlaying = player.playWhenReady
+        player.playWhenReady = wasPlaying
+        player.setMediaItems(items, idx, pos)
+        player.prepare()
     }
 
     fun pause() {

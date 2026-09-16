@@ -53,6 +53,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Tab
@@ -154,8 +157,8 @@ fun AudioPlayerSheet(onDismiss: () -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = null
     ) {
         LazyColumn(
@@ -226,28 +229,25 @@ fun AudioPlayerSheet(onDismiss: () -> Unit) {
                 }
             }
 
-            // Tabs: Player / Queue / Audio Info
+            // Tabs: Material You single-choice segmented control
             item {
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                    modifier = Modifier.clip(RoundedCornerShape(18.dp))
+                val tabLabels = listOf("Player", "Queue (${queue.size})", "Details")
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Player", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Queue (${queue.size})", fontWeight = FontWeight.Bold) }
-                    )
-                    Tab(
-                        selected = selectedTab == 2,
-                        onClick = { selectedTab = 2 },
-                        text = { Text("Details", fontWeight = FontWeight.Bold) }
-                    )
+                    tabLabels.forEachIndexed { index, label ->
+                        SegmentedButton(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            shape = SegmentedButtonDefaults.itemShape(
+                                index = index,
+                                count = tabLabels.size
+                            ),
+                            label = {
+                                Text(label, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+                        )
+                    }
                 }
             }
 
