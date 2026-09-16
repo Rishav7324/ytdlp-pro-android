@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">NovaFetch</string>
+    <string name="app_name">Zyvro</string>
     <string name="app_tagline">Fast, private media downloads</string>
     <string name="nav_home">Home</string>
     <string name="nav_queue">Queue</string>

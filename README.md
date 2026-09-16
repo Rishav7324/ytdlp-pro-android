@@ -1,7 +1,7 @@
-# NovaFetch
+# Zyvro
 
 <p align="center">
-  <strong>NovaFetch</strong><br>
+  <strong>Zyvro</strong><br>
   A modern, open-source Android media downloader powered by yt-dlp, FFmpeg, and Aria2c.
 </p>
 
@@ -12,9 +12,9 @@
   <a href="https://github.com/Rishav7324/ytdlp-pro-android/stargazers"><img src="https://img.shields.io/github/stars/Rishav7324/ytdlp-pro-android" alt="Stars"></a>
 </p>
 
-NovaFetch is built with **Kotlin**, **Jetpack Compose**, **Material 3**, **yt-dlp**, **FFmpeg**, **Aria2c**, **Media3**, **Room**, and **DataStore**. The project is designed around a clean Android architecture, responsive UI, background downloads, and a polished liquid-glass inspired visual system.
+Zyvro is built with **Kotlin**, **Jetpack Compose**, **Material 3**, **yt-dlp**, **FFmpeg**, **Aria2c**, **Media3**, **Room**, and **DataStore**. The project is designed around a clean Android architecture, responsive UI, background downloads, and a polished liquid-glass inspired visual system.
 
-> **Open source:** NovaFetch is licensed under **GNU GPL v3 or later**. Third-party components remain subject to their own licenses.
+> **Open source:** Zyvro is licensed under **GNU GPL v3 or later**. Third-party components remain subject to their own licenses.
 
 ## ✨ Highlights
 
@@ -55,7 +55,7 @@ NovaFetch is built with **Kotlin**, **Jetpack Compose**, **Material 3**, **yt-dl
 ## 🏗️ Architecture
 
 ```text
-app/src/main/java/com/ytdlp/app/
+app/src/main/java/com/zyvro/app/
 ├── data/
 │   ├── local/          # Room database and DAOs
 │   ├── preferences/    # DataStore preferences
@@ -151,13 +151,13 @@ Good first contributions include:
 
 ## 📋 Project status
 
-NovaFetch is under active development. Features and internal APIs may change between releases. Release artifacts should be treated as experimental until a stable release is explicitly published.
+Zyvro is under active development. Features and internal APIs may change between releases. Release artifacts should be treated as experimental until a stable release is explicitly published.
 
 ## ⚖️ License
 
-NovaFetch is free and open-source software licensed under the **GNU General Public License v3 or later**. See [LICENSE](LICENSE).
+Zyvro is free and open-source software licensed under the **GNU General Public License v3 or later**. See [LICENSE](LICENSE).
 
-NovaFetch integrates third-party open-source software including yt-dlp, FFmpeg, Aria2c, AndroidX, Jetpack Compose, Room, DataStore, Media3, and Coil. Their respective licenses and notices continue to apply.
+Zyvro integrates third-party open-source software including yt-dlp, FFmpeg, Aria2c, AndroidX, Jetpack Compose, Room, DataStore, Media3, and Coil. Their respective licenses and notices continue to apply.
 
 ## 👤 Maintainer
 
@@ -168,7 +168,7 @@ NovaFetch integrates third-party open-source software including yt-dlp, FFmpeg, 
 
 ## 🙏 Acknowledgements
 
-NovaFetch would not exist without the open-source projects that power it, especially:
+Zyvro would not exist without the open-source projects that power it, especially:
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp)
 - [FFmpeg](https://ffmpeg.org/)

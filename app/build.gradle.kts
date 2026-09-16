@@ -6,27 +6,57 @@ plugins {
 }
 
 android {
-    namespace = "com.ytdlp.app"
+    namespace = "com.zyvro.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.ytdlp.app"
+        applicationId = "com.zyvro.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23
-        versionName = "2.0.1"
+        versionCode = 24
+        versionName = "3.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
         ndk { abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")) }
     }
 
+    signingConfigs {
+        create("release") {
+            val propsFile = rootProject.file("key.properties")
+            val props = java.util.Properties()
+            if (propsFile.exists()) propsFile.inputStream().use { props.load(it) }
+            val storeFilePath = (props.getProperty("storeFile") as String?)
+                ?: System.getenv("ZYVRO_STORE_FILE")
+            val storePwd = (props.getProperty("storePassword") as String?)
+                ?: System.getenv("ZYVRO_STORE_PASSWORD")
+            val keyAliasVal = (props.getProperty("keyAlias") as String?)
+                ?: System.getenv("ZYVRO_KEY_ALIAS")
+            val keyPwd = (props.getProperty("keyPassword") as String?)
+                ?: System.getenv("ZYVRO_KEY_PASSWORD")
+            if (!storeFilePath.isNullOrBlank() && file(storeFilePath).exists()) {
+                storeFile = file(storeFilePath)
+                storePassword = storePwd
+                keyAlias = keyAliasVal
+                keyPassword = keyPwd
+                enableV2Signing = true
+                enableV3Signing = true
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            // Public source builds use the standard debug key. Release signing can be supplied by a private CI configuration later.
-            signingConfig = signingConfigs.getByName("debug")
+            // CI-only signing: uses key.properties or ZYVRO_* env vars when present,
+            // otherwise falls back to debug key so local builds keep working.
+            // Never commit key.properties or *.jks (see .gitignore).
+            val hasReleaseKey = try {
+                signingConfigs.getByName("release").storeFile != null
+            } catch (_: Exception) { false }
+            signingConfig = if (hasReleaseKey) signingConfigs.getByName("release")
+            else signingConfigs.getByName("debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         debug {

@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "YtDlpAndroid"
+rootProject.name = "Zyvro"
 include(":app")

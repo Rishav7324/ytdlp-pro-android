@@ -2,7 +2,7 @@
 
 ## Our standard
 
-NovaFetch is an open-source project and we want it to be a respectful, constructive place for contributors of all experience levels.
+Zyvro is an open-source project and we want it to be a respectful, constructive place for contributors of all experience levels.
 
 Participants are expected to:
 

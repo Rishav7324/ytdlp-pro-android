@@ -11,7 +11,7 @@
 
 Please include:
 
-- NovaFetch version.
+- Zyvro version.
 - Android version and device model.
 - Whether the issue occurs on Debug or Release.
 - The relevant URL/platform, if safe to share.

@@ -28,4 +28,4 @@ Please allow reasonable time for investigation and a fix before public disclosur
 
 ## Security principles
 
-NovaFetch must not contain committed API keys, signing credentials, passwords, private cookies, or other secrets. Downloaded cookies and authentication material must remain user-controlled and must never be logged or uploaded by the application.
+Zyvro must not contain committed API keys, signing credentials, passwords, private cookies, or other secrets. Downloaded cookies and authentication material must remain user-controlled and must never be logged or uploaded by the application.

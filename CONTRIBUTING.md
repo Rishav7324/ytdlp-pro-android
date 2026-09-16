@@ -1,6 +1,6 @@
-# Contributing to NovaFetch
+# Contributing to Zyvro
 
-Thanks for helping improve NovaFetch! Contributions are welcome through issues, pull requests, documentation, testing, and design feedback.
+Thanks for helping improve Zyvro! Contributions are welcome through issues, pull requests, documentation, testing, and design feedback.
 
 ## Before you start
 
@@ -70,7 +70,7 @@ fix: prevent duplicate downloads from queue
 
 ## UI contributions
 
-NovaFetch uses a lightweight liquid-glass visual language based on the Nova aqua palette. New UI should remain consistent with the existing spacing, typography, shapes, motion, light/dark themes, and responsive behavior.
+Zyvro uses a lightweight liquid-glass visual language based on the Nova aqua palette. New UI should remain consistent with the existing spacing, typography, shapes, motion, light/dark themes, and responsive behavior.
 
 ## Review checklist
 

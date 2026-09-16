@@ -13,5 +13,5 @@
 -dontwarn androidx.room.paging.**
 
 # Keep app engine/model classes that are accessed by callbacks/reflection.
--keep class com.ytdlp.app.engine.** { *; }
--keep class com.ytdlp.app.data.local.** { *; }
+-keep class com.zyvro.app.engine.** { *; }
+-keep class com.zyvro.app.data.local.** { *; }

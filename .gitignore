@@ -9,7 +9,8 @@
 .cxx
 local.properties
 app/build/
-# Local / CI signing material
+# Local / CI signing material (never commit real keys)
 *.keystore
 *.jks
 *.p12
+key.properties

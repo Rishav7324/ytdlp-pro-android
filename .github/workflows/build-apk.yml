@@ -1,8 +1,8 @@
-name: Build NovaFetch Release
+name: Build Zyvro Release
 
 on:
   push:
-    branches: [ main, master, feature/novafetch-production-upgrade ]
+    branches: [ main, master ]
     tags: [ 'v*' ]
   pull_request:
     branches: [ main, master ]
@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build & Package NovaFetch
+    name: Build & Package Zyvro
     runs-on: ubuntu-latest
 
     steps:
@@ -38,13 +38,40 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace --no-daemon
 
+      # CI-only release signing: decode the upload keystore from secrets into
+      # key.properties. Local builds without secrets keep working via the
+      # debug-key fallback in app/build.gradle.kts. Never commit key.properties.
+      - name: Prepare release keystore (CI only)
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/zyvro-release.keystore"
+          {
+            echo "storeFile=$RUNNER_TEMP/zyvro-release.keystore"
+            echo "storePassword=$ANDROID_STORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > key.properties
+          echo "Release keystore prepared."
+
       - name: Build release APK
         run: ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Verify release signature
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          echo "Verifying $APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$APK" || \
+          ls "$ANDROID_HOME/build-tools/" | sort -V | tail -n 1 | xargs -I{} "$ANDROID_HOME/build-tools/{}/apksigner" verify --print-certs "$APK"
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: NovaFetch-APKs
+          name: Zyvro-APKs
           path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk

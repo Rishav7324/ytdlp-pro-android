@@ -1,0 +1,9 @@
+# Zyvro release signing — CI-only. Copy to key.properties (git-ignored) for local
+# signed builds, or export ZYVRO_STORE_FILE / ZYVRO_STORE_PASSWORD /
+# ZYVRO_KEY_ALIAS / ZYVRO_KEY_PASSWORD env vars. NEVER commit the real file.
+# CI prefers GitHub Secrets: ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD,
+# ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+storeFile=/path/to/zyvro-release.keystore
+storePassword=change-me
+keyAlias=zyvro-upload
+keyPassword=change-me

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Themed-icon (Android 13+) monochrome glyph: download arrow + tray. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,20 L54,58 M54,58 L40,44 M54,58 L68,44"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,66 L28,78 C28,82 31,85 35,85 L73,85 C77,85 80,82 80,78 L80,66 L72,66 L72,77 L36,77 L36,66 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49,58 L59,58 L54,66 Z" />
+</vector>
