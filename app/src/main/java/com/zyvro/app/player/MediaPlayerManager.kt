@@ -3,9 +3,16 @@ package com.zyvro.app.player
 import android.content.Context
 import android.net.Uri
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.TrackGroup
+import androidx.media3.common.Tracks
+import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import com.zyvro.app.data.local.DownloadEntity
@@ -21,10 +28,27 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 
+/** A single selectable audio/subtitle track surfaced to the UI. */
+data class PlayerTrack(
+    val label: String,
+    val group: TrackGroup,
+    val trackIndex: Int,
+    val isSelected: Boolean
+)
+
 @OptIn(UnstableApi::class)
 class MediaPlayerManager private constructor(context: Context) {
 
-    val player: ExoPlayer = ExoPlayer.Builder(context.applicationContext).build()
+    val player: ExoPlayer = ExoPlayer.Builder(context.applicationContext)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.CONTENT_TYPE_MOVIE)
+                .build(),
+            true // handle audio focus: duck/pause on calls & notifications
+        )
+        .setHandleAudioBecomingNoisy(true) // auto-pause on headphone disconnect
+        .build()
 
     private val _currentMedia = MutableStateFlow<DownloadEntity?>(null)
     val currentMedia: StateFlow<DownloadEntity?> = _currentMedia.asStateFlow()
@@ -63,6 +87,20 @@ class MediaPlayerManager private constructor(context: Context) {
     private val _loopPointB = MutableStateFlow<Long?>(null)
     val loopPointB: StateFlow<Long?> = _loopPointB.asStateFlow()
 
+    // Track selection (audio / subtitles)
+    private val _audioTracks = MutableStateFlow<List<PlayerTrack>>(emptyList())
+    val audioTracks: StateFlow<List<PlayerTrack>> = _audioTracks.asStateFlow()
+
+    private val _subtitleTracks = MutableStateFlow<List<PlayerTrack>>(emptyList())
+    val subtitleTracks: StateFlow<List<PlayerTrack>> = _subtitleTracks.asStateFlow()
+
+    private val _subtitlesEnabled = MutableStateFlow(true)
+    val subtitlesEnabled: StateFlow<Boolean> = _subtitlesEnabled.asStateFlow()
+
+    // Playback errors surfaced to the UI instead of a stuck spinner
+    private val _playerError = MutableStateFlow<String?>(null)
+    val playerError: StateFlow<String?> = _playerError.asStateFlow()
+
     private var progressJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
 
@@ -85,7 +123,109 @@ class MediaPlayerManager private constructor(context: Context) {
             override fun onRepeatModeChanged(repeat: Int) {
                 _repeatMode.value = repeat
             }
+
+            override fun onTracksChanged(tracks: Tracks) {
+                refreshTrackFlows(tracks)
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                _playerError.value = error.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "Playback error (${error.errorCodeName})"
+            }
         })
+    }
+
+    private fun refreshTrackFlows(tracks: Tracks = player.currentTracks) {
+        val audio = mutableListOf<PlayerTrack>()
+        val subs = mutableListOf<PlayerTrack>()
+        var subIndex = 0
+        for (group in tracks.groups) {
+            when (group.type) {
+                C.TRACK_TYPE_AUDIO -> {
+                    for (i in 0 until group.length) {
+                        if (!group.isTrackSupported(i)) continue
+                        val f = group.getTrackFormat(i)
+                        audio.add(
+                            PlayerTrack(
+                                label = audioTrackLabel(f.language, f.sampleMimeType, f.channelCount),
+                                group = group.mediaTrackGroup,
+                                trackIndex = i,
+                                isSelected = group.isTrackSelected(i)
+                            )
+                        )
+                    }
+                }
+                C.TRACK_TYPE_TEXT -> {
+                    for (i in 0 until group.length) {
+                        if (!group.isTrackSupported(i)) continue
+                        val f = group.getTrackFormat(i)
+                        subIndex++
+                        subs.add(
+                            PlayerTrack(
+                                label = f.label?.takeIf { it.isNotBlank() }
+                                    ?: f.language?.takeIf { it.isNotBlank() && it != "und" }
+                                    ?: "Subtitle $subIndex",
+                                group = group.mediaTrackGroup,
+                                trackIndex = i,
+                                isSelected = group.isTrackSelected(i)
+                            )
+                        )
+                    }
+                }
+            }
+        }
+        _audioTracks.value = audio
+        _subtitleTracks.value = subs
+        // Any selected/enabled text track means subtitles are on.
+        if (subs.isNotEmpty()) {
+            _subtitlesEnabled.value = subs.any { it.isSelected }
+        }
+    }
+
+    private fun audioTrackLabel(language: String?, mime: String?, channels: Int): String {
+        val parts = mutableListOf<String>()
+        language?.takeIf { it.isNotBlank() && it != "und" }?.let { parts.add(it) }
+        mime?.substringAfter('/')?.uppercase()?.let { parts.add(it) }
+        if (channels > 0) parts.add("${channels}ch")
+        return parts.ifEmpty { listOf("Audio track") }.joinToString(" · ")
+    }
+
+    /** Select an embedded or sideloaded audio track. */
+    fun selectAudioTrack(track: PlayerTrack) {
+        val params = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(track.group, track.trackIndex))
+            .build()
+        player.trackSelectionParameters = params
+        refreshTrackFlows()
+    }
+
+    /** Select an embedded or sideloaded subtitle track (also re-enables subs). */
+    fun selectSubtitleTrack(track: PlayerTrack) {
+        val params = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .setOverrideForType(TrackSelectionOverride(track.group, track.trackIndex))
+            .build()
+        player.trackSelectionParameters = params
+        _subtitlesEnabled.value = true
+        refreshTrackFlows()
+    }
+
+    /** Turn subtitles off completely (embedded + sideloaded). */
+    fun disableSubtitles() {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+            .build()
+        _subtitlesEnabled.value = false
+        refreshTrackFlows()
+    }
+
+    /** Re-enable subtitle rendering (system/override selection applies). */
+    fun enableSubtitles() {
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .build()
+        _subtitlesEnabled.value = true
+        refreshTrackFlows()
     }
 
     private fun startProgressTracking() {
@@ -134,7 +274,14 @@ class MediaPlayerManager private constructor(context: Context) {
         }
 
         clearAbLoop()
-        val mediaItem = MediaItem.fromUri(uri)
+        _playerError.value = null
+        _audioTracks.value = emptyList()
+        _subtitleTracks.value = emptyList()
+        _subtitlesEnabled.value = true
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setSubtitleConfigurations(findSidecarSubtitles(file))
+            .build()
         player.setMediaItem(mediaItem)
         player.prepare()
         player.playWhenReady = true
@@ -147,6 +294,32 @@ class MediaPlayerManager private constructor(context: Context) {
             }
         } else {
             _isAudioSheetOpen.value = true
+        }
+    }
+
+    /**
+     * Auto-loads same-name subtitle sidecars (video.srt / video.vtt / video.ass)
+     * sitting next to the media file, matching desktop-player behavior.
+     */
+    private fun findSidecarSubtitles(mediaFile: File): List<MediaItem.SubtitleConfiguration> {
+        if (!mediaFile.exists()) return emptyList()
+        val base = mediaFile.nameWithoutExtension
+        val dir = mediaFile.parentFile ?: return emptyList()
+        val mimeByExt = mapOf(
+            "srt" to MimeTypes.APPLICATION_SUBRIP,
+            "vtt" to MimeTypes.TEXT_VTT,
+            "ass" to MimeTypes.TEXT_SSA,
+            "ssa" to MimeTypes.TEXT_SSA
+        )
+        return mimeByExt.mapNotNull { (ext, mime) ->
+            val sub = File(dir, "$base.$ext")
+            if (sub.exists() && sub.isFile) {
+                MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(sub))
+                    .setMimeType(mime)
+                    .setLanguage("und")
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .build()
+            } else null
         }
     }
 
@@ -250,6 +423,7 @@ class MediaPlayerManager private constructor(context: Context) {
     fun closePlayer() {
         player.stop()
         _currentMedia.value = null
+        _playerError.value = null
         _isVideoExpanded.value = false
         _isAudioSheetOpen.value = false
         clearAbLoop()

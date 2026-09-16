@@ -58,7 +58,7 @@ fun VideoPreviewCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(208.dp)
+                    .height(152.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(MaterialThemeSurfaceColor)
             ) {
@@ -67,7 +67,7 @@ fun VideoPreviewCard(
                         model = videoInfo.thumbnailUrl,
                         contentDescription = videoInfo.title,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxWidth().height(208.dp)
+                        modifier = Modifier.fillMaxWidth().height(152.dp)
                     )
                     Box(
                         modifier = Modifier
@@ -89,7 +89,7 @@ fun VideoPreviewCard(
                         label = "placeholder-alpha"
                     )
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(208.dp).alpha(alpha.value),
+                        modifier = Modifier.fillMaxWidth().height(152.dp).alpha(alpha.value),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(40.dp))

@@ -351,12 +351,11 @@ private fun MediaThumbnailView(
         )
     }
 
-    val shape = RoundedCornerShape(16.dp)
+    val shape = RoundedCornerShape(12.dp)
 
     Box(
         modifier = modifier
-            .size(68.dp)
-            .shadow(6.dp, shape, spotColor = if (isVideo) Color(0xFF00B4D8).copy(alpha = 0.35f) else Color(0xFF9D4EDD).copy(alpha = 0.35f))
+            .size(52.dp)
             .clip(shape)
             .background(fallbackGradient)
             .border(
@@ -371,7 +370,7 @@ private fun MediaThumbnailView(
             imageVector = if (isVideo) Icons.Rounded.PlayCircle else Icons.Rounded.MusicNote,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.85f),
-            modifier = Modifier.size(32.dp)
+            modifier = Modifier.size(24.dp)
         )
 
         if (request != null) {

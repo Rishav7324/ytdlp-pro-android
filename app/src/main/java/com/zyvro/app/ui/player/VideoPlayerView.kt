@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -35,13 +36,16 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.BrightnessLow
+import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Forward10
@@ -67,6 +71,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
@@ -97,6 +102,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -104,6 +110,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.zyvro.app.player.MediaPlayerManager
+import com.zyvro.app.player.PlayerTrack
 import com.zyvro.app.ui.components.equalizer.EqualizerDialog
 import com.zyvro.app.ui.theme.NovaAqua
 import com.zyvro.app.ui.theme.NovaAquaDeep
@@ -136,6 +143,12 @@ fun VideoPlayerView(onClose: () -> Unit) {
     var resizeModeName by remember { mutableStateOf("Fit") }
     var moreMenuExpanded by remember { mutableStateOf(false) }
     var showEqualizer by remember { mutableStateOf(false) }
+    var showTrackPicker by remember { mutableStateOf(false) }
+
+    val audioTracks by manager.audioTracks.collectAsState()
+    val subtitleTracks by manager.subtitleTracks.collectAsState()
+    val subtitlesOn by manager.subtitlesEnabled.collectAsState()
+    val playerError by manager.playerError.collectAsState()
 
     // Gesture HUD states
     var gestureMode by remember { mutableStateOf(PlayerGestureMode.NONE) }
@@ -589,6 +602,34 @@ fun VideoPlayerView(onClose: () -> Unit) {
                                         moreMenuExpanded = false
                                     }
                                 )
+                                if (audioTracks.size > 1) {
+                                    DropdownMenuItem(
+                                        text = { Text("Audio Track (${audioTracks.count { it.isSelected }} / ${audioTracks.size})") },
+                                        leadingIcon = { Icon(Icons.Default.Audiotrack, null) },
+                                        onClick = {
+                                            showTrackPicker = true
+                                            moreMenuExpanded = false
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            if (subtitleTracks.isEmpty()) "Subtitles (None Found)"
+                                            else if (subtitlesOn) "Subtitles (On)"
+                                            else "Subtitles (Off)"
+                                        )
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.ClosedCaption, null) },
+                                    onClick = {
+                                        if (subtitleTracks.isEmpty()) {
+                                            generalHudText = "No subtitle tracks in this file"
+                                        } else {
+                                            showTrackPicker = true
+                                        }
+                                        moreMenuExpanded = false
+                                    }
+                                )
                                 DropdownMenuItem(
                                     text = { Text("Set Loop Point A") },
                                     onClick = {
@@ -759,6 +800,42 @@ fun VideoPlayerView(onClose: () -> Unit) {
     if (showEqualizer) {
         EqualizerDialog(onDismiss = { showEqualizer = false })
     }
+
+    if (showTrackPicker) {
+        TrackPickerDialog(
+            audioTracks = audioTracks,
+            subtitleTracks = subtitleTracks,
+            subtitlesOn = subtitlesOn,
+            onSelectAudio = { manager.selectAudioTrack(it) },
+            onSelectSubtitle = { manager.selectSubtitleTrack(it) },
+            onDisableSubtitles = { manager.disableSubtitles() },
+            onDismiss = { showTrackPicker = false }
+        )
+    }
+
+    // Playback error pill (instead of a stuck spinner)
+    if (playerError != null && !isLocked) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 96.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color(0xFFB3261E).copy(alpha = 0.92f)
+            ) {
+                Text(
+                    text = playerError ?: "",
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 2,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -899,4 +976,123 @@ private fun formatDuration(ms: Long): String {
     val m = (total % 3600) / 60
     val s = total % 60
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
+}
+
+/** Audio-track + subtitle picker (embedded tracks and sideloaded sidecars). */
+@Composable
+private fun TrackPickerDialog(
+    audioTracks: List<PlayerTrack>,
+    subtitleTracks: List<PlayerTrack>,
+    subtitlesOn: Boolean,
+    onSelectAudio: (PlayerTrack) -> Unit,
+    onSelectSubtitle: (PlayerTrack) -> Unit,
+    onDisableSubtitles: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(460.dp)
+        ) {
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                Text(
+                    text = "Audio & Subtitles",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    if (audioTracks.size > 1) {
+                        item {
+                            Text(
+                                text = "AUDIO",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                            )
+                        }
+                        items(audioTracks, key = { "a${it.group.hashCode()}:${it.trackIndex}" }) { track ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelectAudio(track) }
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = track.isSelected, onClick = { onSelectAudio(track) })
+                                Spacer(Modifier.width(4.dp))
+                                Text(track.label, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                    item {
+                        Text(
+                            text = "SUBTITLES",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                        )
+                    }
+                    if (subtitleTracks.isEmpty()) {
+                        item {
+                            Text(
+                                text = "No subtitle tracks. Place a same-name .srt/.vtt file next to the video to auto-load it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
+                            )
+                        }
+                    } else {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onDisableSubtitles() }
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = !subtitlesOn, onClick = { onDisableSubtitles() })
+                                Spacer(Modifier.width(4.dp))
+                                Text("Off", style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        items(subtitleTracks, key = { "s${it.group.hashCode()}:${it.trackIndex}" }) { track ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelectSubtitle(track) }
+                                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = subtitlesOn && track.isSelected,
+                                    onClick = { onSelectSubtitle(track) }
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text(track.label, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+                TextButtonRow(label = "Done", onClick = onDismiss)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TextButtonRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.End
+    ) {
+        androidx.compose.material3.TextButton(onClick = onClick) {
+            Text(label, fontWeight = FontWeight.Bold)
+        }
+    }
 }
