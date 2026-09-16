@@ -368,6 +368,7 @@ class MediaPlayerManager private constructor(context: Context) {
 
     fun pause() {
         player.pause()
+        persistResumePosition()
     }
 
     fun play() {
@@ -377,6 +378,7 @@ class MediaPlayerManager private constructor(context: Context) {
     fun togglePlayPause() {
         if (player.isPlaying) {
             player.pause()
+            persistResumePosition()
         } else {
             player.play()
         }
@@ -434,7 +436,49 @@ class MediaPlayerManager private constructor(context: Context) {
         _isAudioSheetOpen.value = open
     }
 
+    /** NextPlayer-style resume: remember position for finished/paused media. */
+    private fun persistResumePosition() {
+        val media = _currentMedia.value ?: return
+        val pos = player.currentPosition.coerceAtLeast(0L)
+        val dur = player.duration.coerceAtLeast(0L)
+        scope.launch {
+            runCatching {
+                val prefs = YtDlpApp.instance.preferences
+                // Drop the bookmark when finished (<10s left) or barely started.
+                if (dur > 0 && pos > 10_000L && pos < dur - 10_000L) {
+                    prefs.saveResumePosition(media.id, pos)
+                } else {
+                    prefs.clearResumePosition(media.id)
+                }
+            }
+        }
+    }
+
+    suspend fun getResumePosition(mediaId: Long): Long =
+        runCatching { YtDlpApp.instance.preferences.getResumePosition(mediaId) }.getOrDefault(0L)
+
+    /** Stats-for-nerds snapshot for the current video. */
+    data class PlaybackStats(
+        val resolution: String,
+        val videoCodec: String,
+        val audioCodec: String,
+        val bitrate: String,
+        val frameRate: String
+    )
+
+    fun getPlaybackStats(): PlaybackStats? {
+        val v = player.videoFormat ?: return null
+        val a = player.audioFormat
+        val res = if (v.width > 0 && v.height > 0) "${v.width}×${v.height}" else "—"
+        val vcodec = v.sampleMimeType?.substringAfter('/')?.uppercase() ?: "—"
+        val acodec = a?.sampleMimeType?.substringAfter('/')?.uppercase() ?: "—"
+        val br = v.bitrate.takeIf { it > 0 }?.let { "%.1f Mbps".format(it / 1_000_000f) } ?: "—"
+        val fps = v.frameRate.takeIf { it > 0 }?.let { "%.0f fps".format(it) } ?: "—"
+        return PlaybackStats(res, vcodec, acodec, br, fps)
+    }
+
     fun closePlayer() {
+        persistResumePosition()
         player.stop()
         _currentMedia.value = null
         _playerError.value = null

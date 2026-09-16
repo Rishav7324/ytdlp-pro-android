@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
@@ -144,6 +145,8 @@ fun VideoPlayerView(onClose: () -> Unit) {
     var moreMenuExpanded by remember { mutableStateOf(false) }
     var showEqualizer by remember { mutableStateOf(false) }
     var showTrackPicker by remember { mutableStateOf(false) }
+    var showStats by remember { mutableStateOf(false) }
+    var resumeOfferMs by remember { mutableLongStateOf(0L) }
 
     val audioTracks by manager.audioTracks.collectAsState()
     val subtitleTracks by manager.subtitleTracks.collectAsState()
@@ -160,6 +163,30 @@ fun VideoPlayerView(onClose: () -> Unit) {
     var generalHudText by remember { mutableStateOf<String?>(null) }
 
     val item = media ?: return
+
+    // NextPlayer-style resume: offer the saved position once per item.
+    LaunchedEffect(item.id) {
+        resumeOfferMs = 0L
+        val saved = manager.getResumePosition(item.id)
+        val dur = manager.duration.value
+        if (dur > 0 && saved > 10_000L && saved < dur - 10_000L) {
+            resumeOfferMs = saved
+        } else if (dur <= 0 && saved > 10_000L) {
+            // Duration not known yet; re-check after ready below.
+            resumeOfferMs = -1L
+        }
+    }
+    // If duration arrived late, validate the pending offer.
+    LaunchedEffect(duration) {
+        if (resumeOfferMs == -1L && duration > 0) {
+            val saved = manager.getResumePosition(item.id)
+            resumeOfferMs = if (saved > 10_000L && saved < duration - 10_000L) saved else 0L
+        }
+        // Hide the offer once the user has caught up / passed it.
+        if (resumeOfferMs > 0 && position >= resumeOfferMs - 3_000L) {
+            resumeOfferMs = 0L
+        }
+    }
 
     // Keep screen on during playback
     DisposableEffect(Unit) {
@@ -656,6 +683,14 @@ fun VideoPlayerView(onClose: () -> Unit) {
                                         }
                                     )
                                 }
+                                DropdownMenuItem(
+                                    text = { Text("Playback stats") },
+                                    leadingIcon = { Icon(Icons.Default.Info, null) },
+                                    onClick = {
+                                        showStats = true
+                                        moreMenuExpanded = false
+                                    }
+                                )
                             }
                         }
 
@@ -836,6 +871,66 @@ fun VideoPlayerView(onClose: () -> Unit) {
             }
         }
     }
+
+    // Resume-from-bookmark pill
+    if (resumeOfferMs > 0 && !isLocked) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 148.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Color.Black.copy(alpha = 0.82f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, NovaAqua.copy(alpha = 0.5f)),
+                modifier = Modifier.clickable {
+                    manager.seekTo(resumeOfferMs)
+                    resumeOfferMs = 0L
+                }
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, null, tint = NovaAqua, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Resume from ${formatDuration(resumeOfferMs)}",
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+
+    if (showStats) {
+        val stats = manager.getPlaybackStats()
+        Dialog(onDismissRequest = { showStats = false }) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Playback stats", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    StatsRow("Resolution", stats?.resolution ?: "—")
+                    StatsRow("Video codec", stats?.videoCodec ?: "—")
+                    StatsRow("Audio codec", stats?.audioCodec ?: "—")
+                    StatsRow("Bitrate", stats?.bitrate ?: "—")
+                    StatsRow("Frame rate", stats?.frameRate ?: "—")
+                    StatsRow("Speed", "${speed}x")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        androidx.compose.material3.TextButton(onClick = { showStats = false }) {
+                            Text("Close", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -978,8 +1073,7 @@ private fun formatDuration(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
 }
 
-/** Audio-track + subtitle picker (embedded tracks and sideloaded sidecars). */
-@Composable
+/** Audio-track + subtitle picker (embedded tracks and sideloaded sidecars). */@Composable
 private fun TrackPickerDialog(
     audioTracks: List<PlayerTrack>,
     subtitleTracks: List<PlayerTrack>,
@@ -1094,5 +1188,24 @@ private fun TextButtonRow(label: String, onClick: () -> Unit) {
         androidx.compose.material3.TextButton(onClick = onClick) {
             Text(label, fontWeight = FontWeight.Bold)
         }
+    }
+}
+
+@Composable
+private fun StatsRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }

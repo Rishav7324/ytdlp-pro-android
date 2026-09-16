@@ -7,9 +7,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.File
 
@@ -151,5 +152,18 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setAccentColor(accent: String) {
         context.dataStore.edit { it[KEY_ACCENT_COLOR] = accent }
+    }
+
+    /** NextPlayer-style resume position per media id (0 = unknown). */
+    suspend fun getResumePosition(mediaId: Long): Long {
+        return context.dataStore.data.map { it[longPreferencesKey("resume_pos_$mediaId")] ?: 0L }.first()
+    }
+
+    suspend fun saveResumePosition(mediaId: Long, positionMs: Long) {
+        context.dataStore.edit { it[longPreferencesKey("resume_pos_$mediaId")] = positionMs }
+    }
+
+    suspend fun clearResumePosition(mediaId: Long) {
+        context.dataStore.edit { it.remove(longPreferencesKey("resume_pos_$mediaId")) }
     }
 }

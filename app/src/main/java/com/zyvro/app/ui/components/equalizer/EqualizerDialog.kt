@@ -57,7 +57,7 @@ fun EqualizerDialog(
     var isEnabled by remember { mutableStateOf(true) }
     var bassBoost by remember { mutableFloatStateOf(0.5f) }
     var virtualizer by remember { mutableFloatStateOf(0.3f) }
-    var volumeGain by remember { mutableFloatStateOf(0f) }
+    var volumeGain by remember { mutableFloatStateOf(AudioFxManager.instance.volumeBoostMb / 1000f) }
 
     val bandFrequencies = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")
     val bandLevels = remember { mutableStateListOf(0f, 0f, 0f, 0f, 0f) }
@@ -199,6 +199,29 @@ fun EqualizerDialog(
                                 AudioFxManager.instance.setVirtualizerStrength((it * 1000).toInt().toShort())
                             },
                             enabled = isEnabled
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Volume Boost", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                            Text("${(volumeGain * 100).toInt()}%", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        }
+                        Slider(
+                            value = volumeGain,
+                            onValueChange = {
+                                volumeGain = it
+                                AudioFxManager.instance.setVolumeGainMb((it * 1000).toInt())
+                            },
+                            enabled = isEnabled
+                        )
+                        Text(
+                            "Boosts quiet videos above system volume. High values may distort.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

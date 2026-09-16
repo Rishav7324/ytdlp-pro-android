@@ -16,6 +16,10 @@ class AudioFxManager private constructor() {
     var isEnabled: Boolean = true
         private set
 
+    /** Persisted volume-boost (millibels) re-applied on every new audio session. */
+    var volumeBoostMb: Int = 0
+        private set
+
     fun initAudioEffects(audioSessionId: Int) {
         if (audioSessionId <= 0) return
         try {
@@ -42,7 +46,7 @@ class AudioFxManager private constructor() {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
                 loudnessEnhancer = LoudnessEnhancer(audioSessionId).apply {
                     enabled = true
-                    setTargetGain(0)
+                    setTargetGain(volumeBoostMb)
                 }
             }
         } catch (e: Exception) {
@@ -67,9 +71,10 @@ class AudioFxManager private constructor() {
     }
 
     fun setVolumeGainMb(gainMb: Int) {
+        volumeBoostMb = gainMb.coerceIn(0, 1000)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
             try {
-                loudnessEnhancer?.setTargetGain(gainMb.coerceIn(0, 1000))
+                loudnessEnhancer?.setTargetGain(volumeBoostMb)
             } catch (e: Exception) {
                 Log.e("AudioFxManager", "setVolumeGainMb failed", e)
             }

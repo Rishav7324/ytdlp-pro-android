@@ -1,7 +1,10 @@
 package com.zyvro.app.ui
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.app.PictureInPictureParams
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -12,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.zyvro.app.YtDlpApp
+import com.zyvro.app.player.MediaPlayerManager
 import com.zyvro.app.ui.navigation.AppNavigation
 import com.zyvro.app.ui.theme.YtDlpTheme
 import com.zyvro.app.ui.theme.resolveThemeMode
@@ -45,6 +49,21 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIncomingIntent(intent)
+    }
+
+    /** NextPlayer-style continuity: home press while fullscreen video plays -> PiP. */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        runCatching {
+            if (!packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE)) return
+            val manager = MediaPlayerManager.getInstance(this)
+            if (manager.isVideoExpanded.value && manager.isPlaying.value) {
+                val params = PictureInPictureParams.Builder()
+                    .setAspectRatio(Rational(16, 9))
+                    .build()
+                enterPictureInPictureMode(params)
+            }
+        }
     }
 
     private fun handleIncomingIntent(intent: Intent?) {
