@@ -139,8 +139,8 @@ fun HomeScreen(
         item {
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                elevation = 14.dp
+                shape = RoundedCornerShape(20.dp),
+                elevation = 4.dp
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Row(
@@ -170,8 +170,9 @@ fun HomeScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = "Zyvro",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Black
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Box(
@@ -193,10 +194,10 @@ fun HomeScreen(
                                     }
                                 }
                                 Text(
-                                    text = "Ultra Liquid Glass Engine",
+                                    text = "Fast · Private · Modern",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.SemiBold
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
                         }

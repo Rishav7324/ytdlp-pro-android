@@ -16,9 +16,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(primary = NovaPrimaryDark, onPrimary = BackgroundDark, primaryContainer = Color(0xFF234344), onPrimaryContainer = TextPrimaryDark, secondary = NovaSecondary, onSecondary = BackgroundDark, tertiary = NovaAqua, background = BackgroundDark, onBackground = TextPrimaryDark, surface = SurfaceDark, onSurface = TextPrimaryDark, surfaceVariant = SurfaceVariantDark, onSurfaceVariant = TextSecondaryDark, outline = CardBorderDark)
+private val DarkColorScheme = darkColorScheme(primary = NovaPrimaryDark, onPrimary = IOSGroupedDark, primaryContainer = Color(0xFF234344), onPrimaryContainer = IOSTitleDark, secondary = NovaSecondary, onSecondary = IOSGroupedDark, tertiary = NovaAqua, background = IOSGroupedDark, onBackground = IOSTitleDark, surface = IOSCardDark, onSurface = IOSTitleDark, surfaceVariant = IOSCardDarkElevated, onSurfaceVariant = IOSCaptionDark, outline = IOSSeparatorDark)
 
-private val LightColorScheme = lightColorScheme(primary = NovaAquaDeep, onPrimary = Color.White, primaryContainer = NovaAquaSoft, onPrimaryContainer = NovaInk, secondary = NovaAquaSoft, onSecondary = NovaInk, tertiary = NovaAqua, background = BackgroundLight, onBackground = TextPrimaryLight, surface = SurfaceLight, onSurface = TextPrimaryLight, surfaceVariant = SurfaceVariantLight, onSurfaceVariant = TextSecondaryLight, outline = CardBorderLight)
+private val LightColorScheme = lightColorScheme(primary = NovaAquaDeep, onPrimary = Color.White, primaryContainer = NovaAquaSoft, onPrimaryContainer = NovaInk, secondary = NovaAquaSoft, onSecondary = NovaInk, tertiary = NovaAqua, background = IOSGroupedLight, onBackground = IOSTitleLight, surface = IOSCardLight, onSurface = IOSTitleLight, surfaceVariant = IOSGroupedLight, onSurfaceVariant = IOSCaptionLight, outline = IOSSeparatorLight)
 
 @Composable
 fun YtDlpTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {

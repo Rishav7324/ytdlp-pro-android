@@ -12,6 +12,8 @@ The project follows a release-oriented changelog. Development changes may land b
 - New Zyvro adaptive launcher icon with monochrome themed-icon support.
 - CI-only release signing via GitHub Secrets with local debug-key fallback.
 - Minimal clean Material3 UI refresh pass (reduced glass effects).
+- iOS-style UI pass: grouped backgrounds, edge-to-edge tab bar with hairline
+  separator, inset-grouped Settings, large-title headers, calm splash.
 
 ### Changed
 

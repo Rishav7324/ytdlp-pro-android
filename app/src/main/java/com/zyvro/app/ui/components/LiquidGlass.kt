@@ -39,31 +39,14 @@ val AppleSmoothSpringSpec = spring<Float>(
 )
 
 /**
- * Ambient Liquid Glass Backdrop Mesh.
- * Gives screens a subtle gradient mesh so liquid glass cards have radiant depth to refract.
+ * Zyvro screen backdrop.
+ * iOS-style flat grouped background so cards read as clean inset groups.
  */
 @Composable
 fun Modifier.ambientLiquidBackground(
     isDark: Boolean = isSystemInDarkTheme()
 ): Modifier {
-    val ambientBrush = if (isDark) {
-        Brush.verticalGradient(
-            listOf(
-                Color(0xFF070F18),
-                Color(0xFF0D1B2A),
-                Color(0xFF060D15)
-            )
-        )
-    } else {
-        Brush.verticalGradient(
-            listOf(
-                Color(0xFFEEF7F7),
-                Color(0xFFE0F5F6),
-                Color(0xFFF0F9F9)
-            )
-        )
-    }
-    return this.background(ambientBrush)
+    return this.background(MaterialTheme.colorScheme.background)
 }
 
 /**

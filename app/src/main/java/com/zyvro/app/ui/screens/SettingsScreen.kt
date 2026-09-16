@@ -2,7 +2,6 @@ package com.zyvro.app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,19 +21,22 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.zyvro.app.ui.components.LiquidGlassCard
-import com.zyvro.app.ui.components.LiquidGlassPill
-import com.zyvro.app.ui.components.liquidGlass
+import com.zyvro.app.ui.components.ambientLiquidBackground
 import com.zyvro.app.ui.theme.NovaAqua
 import com.zyvro.app.ui.theme.NovaAquaDeep
-import com.zyvro.app.ui.theme.NovaAquaSoft
 import com.zyvro.app.ui.theme.NovaInk
 import com.zyvro.app.viewmodel.SettingsViewModel
 import com.zyvro.app.viewmodel.UpdateState
 
+/**
+ * Zyvro Settings — iOS inset-grouped style.
+ * Large title, section captions, white/elevated grouped cards with hairline
+ * dividers, chevron rows and smooth 14dp radii. All engine wiring unchanged.
+ */
 @Composable
 fun SettingsScreen(
     onOpenLegal: () -> Unit = {},
@@ -68,235 +70,292 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .ambientLiquidBackground()
             .statusBarsPadding()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 16.dp)
     ) {
+        Spacer(Modifier.height(8.dp))
+
+        // iOS large title
         Text(
             text = "Settings",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black
+            style = MaterialTheme.typography.headlineLarge.copy(fontSize = 34.sp),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
+        Spacer(Modifier.height(4.dp))
         Text(
-            text = "Configuration, engine acceleration and legal info.",
+            text = "Engine, downloads and about",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        Spacer(Modifier.height(16.dp))
 
-        // Group 1: yt-dlp Engine
-        LiquidGlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                SettingHeader(Icons.Rounded.CloudDownload, "yt-dlp Core Engine", "Version: $engineVersion")
-                Spacer(Modifier.height(14.dp))
-                Button(
-                    onClick = { viewModel.updateYtDlp() },
-                    enabled = updateState !is UpdateState.Checking,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    if (updateState is UpdateState.Checking) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
-                        Spacer(Modifier.width(10.dp))
-                        Text("Checking GitHub Releases...", fontWeight = FontWeight.Bold)
-                    } else {
-                        Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Check for yt-dlp Engine Update", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // Group 2: Aria2 Accelerator
-        LiquidGlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                SettingHeader(Icons.Rounded.Bolt, "Aria2 Acceleration", "Multi-segment parallel socket downloading")
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (useAria2) "Enabled" else "Disabled",
-                        fontWeight = FontWeight.Bold,
-                        color = if (useAria2) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Switch(checked = useAria2, onCheckedChange = { viewModel.setUseAria2(it) })
-                }
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = "Parallel connection count: $aria2Connections",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.SemiBold
+        // ENGINE
+        IOSSection(header = "YT-DLP ENGINE", footer = "The downloader core updates itself from GitHub releases.") {
+            IOSValueRow(
+                icon = Icons.Rounded.CloudDownload,
+                title = "Engine version",
+                value = engineVersion
+            )
+            IOSDivider()
+            // Full-width iOS blue update button row
+            Button(
+                onClick = { viewModel.updateYtDlp() },
+                enabled = updateState !is UpdateState.Checking,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .height(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = NovaAquaDeep,
+                    contentColor = Color.White
                 )
-                Slider(
-                    value = aria2Connections.toFloat(),
-                    onValueChange = { viewModel.setAria2Connections(it.toInt()) },
-                    valueRange = 1f..16f,
-                    steps = 14,
-                    enabled = useAria2,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        }
-
-        // Group 3: Smart Processing
-        LiquidGlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                SettingHeader(Icons.Rounded.Block, "Smart Post-Processing", "Automated sponsor skip and subtitles")
-                Spacer(Modifier.height(12.dp))
-                SettingSwitch(
-                    title = "SponsorBlock Removal",
-                    subtitle = "Skip sponsored segments automatically via metadata",
-                    checked = sponsorBlockEnabled,
-                    onCheckedChange = { viewModel.setSponsorBlockEnabled(it) }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 8.dp))
-                SettingSwitch(
-                    title = "Auto-Embed Subtitles",
-                    subtitle = "Embed multilingual subtitle tracks if available",
-                    checked = embedSubtitles,
-                    onCheckedChange = { viewModel.setEmbedSubtitles(it) }
-                )
-            }
-        }
-
-        // Group 4: Custom Arguments
-        LiquidGlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                SettingHeader(Icons.Rounded.Code, "Custom yt-dlp Flags", "Advanced parameter overrides")
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = customArgsInput,
-                    onValueChange = {
-                        customArgsInput = it
-                        viewModel.setCustomArguments(it)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 5,
-                    shape = RoundedCornerShape(18.dp),
-                    placeholder = { Text("--embed-chapters --write-thumbnail") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                    )
-                )
-            }
-        }
-
-        // Group 5: Legal & Open Source
-        LiquidGlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 6.dp
-        ) {
-            Column(modifier = Modifier.padding(18.dp)) {
-                SettingHeader(Icons.Rounded.Description, "Legal & Compliance", "Licenses, DMCA, disclaimer and terms")
-                Spacer(Modifier.height(14.dp))
-                OutlinedButton(
-                    onClick = onOpenLegal,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Icon(Icons.Rounded.Policy, null, modifier = Modifier.size(18.dp))
+            ) {
+                if (updateState is UpdateState.Checking) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.White)
+                    Spacer(Modifier.width(10.dp))
+                    Text("Checking GitHub releases…", fontWeight = FontWeight.SemiBold)
+                } else {
+                    Icon(Icons.Rounded.Refresh, null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("View Legal & Open Source Notices", fontWeight = FontWeight.Bold)
+                    Text("Check for engine update", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
-        // Group 6: Author / GitHub Card
-        LiquidGlassCard(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 6.dp,
-            onClick = { uriHandler.openUri("https://github.com/Rishav7324/ytdlp-pro-android") }
-        ) {
+        // DOWNLOADS
+        IOSSection(header = "DOWNLOADS", footer = "Aria2 splits files into parallel segments for faster downloads.") {
+            IOSSwitchRow(
+                icon = Icons.Rounded.Bolt,
+                title = "Aria2 acceleration",
+                subtitle = if (useAria2) "On · $aria2Connections connections" else "Off",
+                checked = useAria2,
+                onCheckedChange = { viewModel.setUseAria2(it) }
+            )
+            if (useAria2) {
+                IOSDivider(startIndent = 58.dp)
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                    Text(
+                        text = "Parallel connections · $aria2Connections",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Slider(
+                        value = aria2Connections.toFloat(),
+                        onValueChange = { viewModel.setAria2Connections(it.toInt()) },
+                        valueRange = 1f..16f,
+                        steps = 14,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+
+        // PROCESSING
+        IOSSection(header = "POST-PROCESSING") {
+            IOSSwitchRow(
+                icon = Icons.Rounded.Block,
+                title = "SponsorBlock",
+                subtitle = "Skip sponsored segments automatically",
+                checked = sponsorBlockEnabled,
+                onCheckedChange = { viewModel.setSponsorBlockEnabled(it) }
+            )
+            IOSDivider(startIndent = 58.dp)
+            IOSSwitchRow(
+                icon = Icons.Rounded.Subtitles,
+                title = "Auto-embed subtitles",
+                subtitle = "Embed subtitle tracks when available",
+                checked = embedSubtitles,
+                onCheckedChange = { viewModel.setEmbedSubtitles(it) }
+            )
+        }
+
+        // ADVANCED
+        IOSSection(header = "ADVANCED", footer = "Extra flags are appended to every yt-dlp call.") {
+            OutlinedTextField(
+                value = customArgsInput,
+                onValueChange = {
+                    customArgsInput = it
+                    viewModel.setCustomArguments(it)
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                minLines = 2,
+                maxLines = 4,
+                shape = RoundedCornerShape(12.dp),
+                label = { Text("Custom yt-dlp flags") },
+                placeholder = { Text("--embed-chapters --write-thumbnail") }
+            )
+        }
+
+        // ABOUT
+        IOSSection(header = "ABOUT") {
+            IOSChevronRow(
+                icon = Icons.Rounded.Description,
+                title = "Legal & open source",
+                subtitle = "Licenses, DMCA, terms",
+                onClick = onOpenLegal
+            )
+            IOSDivider(startIndent = 58.dp)
             Row(
-                modifier = Modifier.padding(18.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { uriHandler.openUri("https://github.com/Rishav7324/ytdlp-pro-android") }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(listOf(NovaAqua, NovaAquaDeep))
-                        ),
+                        .background(Brush.linearGradient(listOf(NovaAqua, NovaAquaDeep))),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("RR", fontWeight = FontWeight.Black, color = NovaInk, fontSize = 16.sp)
+                    Text("RR", fontWeight = FontWeight.Black, color = NovaInk, fontSize = 15.sp)
                 }
-                Spacer(Modifier.width(14.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("Maintained by Rishav Raj", fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleSmall)
-                    Text("GitHub • @Rishav7324", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
-                    Text("Zyvro for Android", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Rishav Raj", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                    Text("Zyvro for Android · @Rishav7324", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Icon(Icons.Rounded.OpenInNew, contentDescription = "Open GitHub", tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
             }
         }
 
-        Spacer(Modifier.height(110.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(
+            text = "Zyvro · v3.0.0",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+        Spacer(Modifier.height(120.dp))
+    }
+}
+
+/** iOS inset-grouped card with optional UPPER-CASE caption header + footer note. */
+@Composable
+private fun IOSSection(
+    header: String? = null,
+    footer: String? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (header != null) {
+        Text(
+            text = header,
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, bottom = 6.dp)
+        )
+    }
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(content = content)
+    }
+    if (footer != null) {
+        Text(
+            text = footer,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 18.dp)
+        )
+    } else {
+        Spacer(Modifier.height(18.dp))
+    }
+}
+
+/** iOS hairline divider, indented past the row icon like UITableView. */
+@Composable
+private fun IOSDivider(startIndent: Dp = 16.dp) {
+    HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+        modifier = Modifier.padding(start = startIndent)
+    )
+}
+
+@Composable
+private fun IOSRowIcon(icon: ImageVector) {
+    Box(
+        modifier = Modifier
+            .size(30.dp)
+            .clip(RoundedCornerShape(7.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(17.dp))
     }
 }
 
 @Composable
-private fun SettingHeader(icon: ImageVector, title: String, subtitle: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(42.dp)
-                .liquidGlass(shape = RoundedCornerShape(14.dp), elevation = 2.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
-        }
-    }
-}
-
-@Composable
-private fun SettingSwitch(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun IOSValueRow(icon: ImageVector, title: String, value: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
-            Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2)
+        IOSRowIcon(icon)
+        Spacer(Modifier.width(12.dp))
+        Text(title, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+    }
+}
+
+@Composable
+private fun IOSSwitchRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IOSRowIcon(icon)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+}
+
+@Composable
+private fun IOSChevronRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IOSRowIcon(icon)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
     }
 }

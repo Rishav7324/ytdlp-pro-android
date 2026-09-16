@@ -135,14 +135,14 @@ fun LibraryScreen(
             Column {
                 Text(
                     text = "Media Library",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black
+                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "${displayList.size} files available",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isDark) NovaCyan else NovaCyanDeep,
-                    fontWeight = FontWeight.SemiBold
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

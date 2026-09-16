@@ -59,14 +59,14 @@ fun QueueScreen(
             Column {
                 Text(
                     text = "Download Queue",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Black
+                    style = MaterialTheme.typography.headlineLarge.copy(fontSize = 32.sp),
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "${activeQueue.size} Active Tasks",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isDark) NovaCyan else NovaPrimary,
-                    fontWeight = FontWeight.SemiBold
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
