@@ -8,7 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,7 +44,7 @@ val AppleSmoothSpringSpec = spring<Float>(
  */
 @Composable
 fun Modifier.ambientLiquidBackground(
-    isDark: Boolean = isSystemInDarkTheme()
+    isDark: Boolean = LocalAppDark.current
 ): Modifier {
     return this.background(MaterialTheme.colorScheme.background)
 }
@@ -61,7 +61,7 @@ fun Modifier.liquidGlass(
     borderAlpha: Float = 0.5f,
     elevation: Dp = 4.dp,
     tintColor: Color? = null,
-    isDark: Boolean = isSystemInDarkTheme()
+    isDark: Boolean = LocalAppDark.current
 ): Modifier {
     val backgroundBrush = if (isDark) {
         val baseTop = tintColor?.copy(alpha = 0.28f) ?: Color(0xFF142436).copy(alpha = 0.78f)
@@ -159,7 +159,7 @@ fun LiquidGlassPill(
     )
 
     val shape = CircleShape
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
 
     val bgBrush = if (isSelected) {
         Brush.horizontalGradient(

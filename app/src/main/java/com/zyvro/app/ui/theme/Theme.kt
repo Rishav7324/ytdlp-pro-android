@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -61,6 +62,11 @@ private fun zyvroDarkScheme(accent: Color, amoled: Boolean) = darkColorScheme(
     outline = IOSSeparatorDark
 )
 
+/** True app-applied darkness (follows theme setting, NOT just system).
+ * Glass/cards must read this instead of isSystemInDarkTheme(), otherwise an
+ * explicit Dark/Black choice on a light system (or vice versa) mismatches. */
+val LocalAppDark = compositionLocalOf { false }
+
 @Composable
 fun YtDlpTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -88,7 +94,17 @@ fun YtDlpTheme(
             controller.isAppearanceLightNavigationBars = !darkTheme
         }
     }
-    MaterialTheme(colorScheme = colorScheme, typography = Typography, shapes = NovaShapes, content = content)
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        shapes = NovaShapes,
+        content = {
+            androidx.compose.runtime.CompositionLocalProvider(
+                LocalAppDark provides darkTheme,
+                content = content
+            )
+        }
+    )
 }
 
 /** Resolve stored theme mode (SYSTEM/LIGHT/DARK/BLACK) to (dark, amoled). */

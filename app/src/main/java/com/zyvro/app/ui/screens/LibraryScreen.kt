@@ -42,7 +42,7 @@ import com.zyvro.app.ui.components.liquidGlass
 import com.zyvro.app.viewmodel.LibraryFilter
 import com.zyvro.app.viewmodel.LibraryViewModel
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.ui.graphics.Brush
 import com.zyvro.app.ui.components.ambientLiquidBackground
 import com.zyvro.app.ui.theme.NovaCyan
@@ -96,7 +96,7 @@ fun LibraryScreen(
         matchesFilter && matchesQuery
     }
 
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
     val activePillBrush = if (isDark) {
         Brush.horizontalGradient(
             listOf(

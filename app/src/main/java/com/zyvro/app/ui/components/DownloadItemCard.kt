@@ -3,7 +3,7 @@ package com.zyvro.app.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,7 +49,7 @@ fun DownloadItemCard(
     onToggleFavorite: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
 
     LiquidGlassCard(
         modifier = modifier.fillMaxWidth(),
@@ -326,7 +326,7 @@ private fun MediaThumbnailView(
 ) {
     val context = LocalContext.current
     val isVideo = download.mediaType == MediaType.VIDEO
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
 
     val imageModel = remember(download.thumbnailUrl, download.targetPath) {
         when {

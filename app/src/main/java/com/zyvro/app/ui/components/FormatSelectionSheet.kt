@@ -2,7 +2,7 @@ package com.zyvro.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,7 +39,7 @@ fun FormatSelectionSheet(
     onQueueDownload: (String, MediaType, String) -> Unit
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
     val videos = remember(videoInfo) {
         videoInfo.formats.filter { !it.isAudioOnly }
             .filter { it.resolution.endsWith("p") }

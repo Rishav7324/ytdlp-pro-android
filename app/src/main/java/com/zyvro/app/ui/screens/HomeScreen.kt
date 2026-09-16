@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -88,7 +88,7 @@ fun HomeScreen(
     onNavigateToBrowser: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
     val playerManager = remember { MediaPlayerManager.getInstance(context) }
     val keyboardController = LocalSoftwareKeyboardController.current
     val uiState by viewModel.uiState.collectAsState()

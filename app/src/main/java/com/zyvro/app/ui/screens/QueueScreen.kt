@@ -1,7 +1,7 @@
 package com.zyvro.app.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
+import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -39,7 +39,7 @@ fun QueueScreen(
     viewModel: QueueViewModel = viewModel()
 ) {
     val activeQueue by viewModel.activeQueue.collectAsState()
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDark.current
 
     Column(
         modifier = Modifier
