@@ -316,7 +316,20 @@ fun PermissionScreen(
             item {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                val allGranted = permissionItems.all { checkGranted(it.permissions) }
+                // Read the refresh trigger so granting permissions recomposes this
+                // block (progress ticks, "Allow" -> check, button -> Continue).
+                val refresh = refreshTrigger
+                val allGranted = remember(refresh) {
+                    permissionItems.all { checkGranted(it.permissions) }
+                }
+
+                // Auto-advance the moment everything is granted.
+                androidx.compose.runtime.LaunchedEffect(allGranted) {
+                    if (allGranted) {
+                        preferences.setOnboardingCompleted(true)
+                        onPermissionsCompleted()
+                    }
+                }
 
                 Button(
                     onClick = {

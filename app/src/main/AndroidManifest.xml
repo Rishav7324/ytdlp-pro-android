@@ -33,7 +33,7 @@
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
-            android:theme="@style/Theme.YtDlp"
+            android:theme="@style/Theme.Zyvro.Splash"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

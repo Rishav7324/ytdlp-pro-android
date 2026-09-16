@@ -38,11 +38,9 @@ import com.zyvro.app.ui.screens.LibraryScreen
 import com.zyvro.app.ui.screens.PermissionScreen
 import com.zyvro.app.ui.screens.QueueScreen
 import com.zyvro.app.ui.screens.SettingsScreen
-import com.zyvro.app.ui.screens.SplashScreen
 import com.zyvro.app.viewmodel.HomeViewModel
 
 sealed class Screen(val route: String, val title: String) {
-    object Splash : Screen("splash", "Splash")
     object Permissions : Screen("permissions", "Permissions")
     object Home : Screen("home", "Home")
     object Browser : Screen("browser", "Browser")
@@ -57,7 +55,8 @@ val navItems = listOf(Screen.Home, Screen.Browser, Screen.Queue, Screen.Library,
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
-    sharedUrl: String? = null
+    sharedUrl: String? = null,
+    startDestination: String = Screen.Permissions.route
 ) {
     val homeViewModel: HomeViewModel = viewModel()
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -95,24 +94,13 @@ fun AppNavigation(
     ) {
         NavHost(
             navController = navController,
-            startDestination = Screen.Splash.route,
+            startDestination = startDestination,
             modifier = Modifier.fillMaxSize(),
             enterTransition = { fadeIn(tween(220, easing = FastOutSlowInEasing)) },
             exitTransition = { fadeOut(tween(180)) },
             popEnterTransition = { fadeIn(tween(200)) },
             popExitTransition = { fadeOut(tween(160)) }
         ) {
-            composable(Screen.Splash.route) {
-                SplashScreen(
-                    onNavigateNext = { destinationRoute ->
-                        navController.navigate(destinationRoute) {
-                            popUpTo(Screen.Splash.route) { inclusive = true }
-                            launchSingleTop = true
-                        }
-                    }
-                )
-            }
-
             composable(Screen.Permissions.route) {
                 PermissionScreen(
                     onPermissionsCompleted = {

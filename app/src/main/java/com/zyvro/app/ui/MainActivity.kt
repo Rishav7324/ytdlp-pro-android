@@ -13,12 +13,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import com.zyvro.app.YtDlpApp
 import com.zyvro.app.player.MediaPlayerManager
 import com.zyvro.app.ui.navigation.AppNavigation
 import com.zyvro.app.ui.theme.YtDlpTheme
 import com.zyvro.app.ui.theme.resolveThemeMode
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Main launcher activity. Feature-specific permissions are requested only
@@ -26,9 +32,22 @@ import com.zyvro.app.ui.theme.resolveThemeMode
  */
 class MainActivity : ComponentActivity() {
     private var sharedUrlState: String? = null
+    private var startRouteState by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Single system splash: hold it only until onboarding state is known,
+        // then start directly on permissions/home (no second Compose splash).
+        var ready = false
+        splash.setKeepOnScreenCondition { !ready }
+        lifecycleScope.launch {
+            val done = runCatching {
+                (application as YtDlpApp).preferences.onboardingCompleted.first()
+            }.getOrDefault(false)
+            startRouteState = if (done) "home" else "permissions"
+            ready = true
+        }
         enableEdgeToEdge()
         handleIncomingIntent(intent)
         setContent {
@@ -39,7 +58,9 @@ class MainActivity : ComponentActivity() {
             val (dark, amoled) = resolveThemeMode(themeMode, systemDark)
             YtDlpTheme(darkTheme = dark, amoled = amoled, accent = accent) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AppNavigation(sharedUrl = sharedUrlState)
+                    startRouteState?.let { start ->
+                        AppNavigation(sharedUrl = sharedUrlState, startDestination = start)
+                    }
                 }
             }
         }
