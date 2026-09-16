@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -24,7 +26,7 @@ android {
     signingConfigs {
         create("release") {
             val propsFile = rootProject.file("key.properties")
-            val props = java.util.Properties()
+            val props = Properties()
             if (propsFile.exists()) propsFile.inputStream().use { props.load(it) }
             val storeFilePath = (props.getProperty("storeFile") as String?)
                 ?: System.getenv("ZYVRO_STORE_FILE")
