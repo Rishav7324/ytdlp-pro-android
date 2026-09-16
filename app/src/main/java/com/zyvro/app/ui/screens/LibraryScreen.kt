@@ -87,6 +87,8 @@ fun LibraryScreen(
             LibraryFilter.ALL -> true
             LibraryFilter.VIDEOS -> item.mediaType == MediaType.VIDEO
             LibraryFilter.AUDIO -> item.mediaType == MediaType.AUDIO
+            // Device scans carry no play stats: show everything under smart filters.
+            LibraryFilter.FAVORITES, LibraryFilter.TOP -> true
         }
         val matchesQuery = searchQuery.isBlank() ||
                 item.title.contains(searchQuery, ignoreCase = true) ||

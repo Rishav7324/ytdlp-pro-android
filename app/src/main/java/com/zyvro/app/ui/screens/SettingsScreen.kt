@@ -137,7 +137,7 @@ fun SettingsScreen(
             Text(
                 text = "Theme",
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 8.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
             )
             Row(
                 modifier = Modifier
@@ -164,7 +164,7 @@ fun SettingsScreen(
             Text(
                 text = "Accent color",
                 style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 8.dp)
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
             )
             Row(
                 modifier = Modifier
