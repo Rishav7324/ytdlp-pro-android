@@ -61,8 +61,8 @@ fun MiniPlayerBar() {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 6.dp),
-            shape = RoundedCornerShape(26.dp),
-            elevation = 16.dp,
+            shape = RoundedCornerShape(20.dp),
+            elevation = 4.dp,
             onClick = {
                 if (item.mediaType == MediaType.VIDEO) {
                     playerManager.setVideoExpanded(true)

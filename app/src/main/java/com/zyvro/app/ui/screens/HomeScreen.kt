@@ -287,8 +287,8 @@ fun HomeScreen(
         item {
             LiquidGlassCard(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(26.dp),
-                elevation = 8.dp
+                shape = RoundedCornerShape(20.dp),
+                elevation = 4.dp
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
                     Text(
@@ -362,7 +362,7 @@ fun HomeScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Fetch media primary CTA
+                    // Fetch media primary CTA (iOS blue action button)
                     Button(
                         onClick = {
                             keyboardController?.hide()
@@ -372,9 +372,8 @@ fun HomeScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
-                            .shadow(8.dp, RoundedCornerShape(16.dp), spotColor = NovaAquaDeep),
-                        shape = RoundedCornerShape(16.dp),
+                            .height(50.dp),
+                        shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = NovaAquaDeep,
                             contentColor = Color.White
