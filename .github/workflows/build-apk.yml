@@ -42,13 +42,16 @@ jobs:
       # key.properties. Local builds without secrets keep working via the
       # debug-key fallback in app/build.gradle.kts. Never commit key.properties.
       - name: Prepare release keystore (CI only)
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "No release key secrets configured - build will use the debug-key fallback."
+            exit 0
+          fi
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/zyvro-release.keystore"
           {
             echo "storeFile=$RUNNER_TEMP/zyvro-release.keystore"
