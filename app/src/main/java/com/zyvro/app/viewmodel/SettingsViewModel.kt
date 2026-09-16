@@ -78,5 +78,4 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setAria2Connections(count: Int) = viewModelScope.launch { preferences.setAria2Connections(count) }
     fun setAccentColor(accent: String) = viewModelScope.launch { preferences.setAccentColor(accent) }
     fun setYtAndroidClient(enabled: Boolean) = viewModelScope.launch { preferences.setYtAndroidClient(enabled) }
-    fun setCookiesContent(content: String) = viewModelScope.launch { preferences.setCookiesContent(content) }
 }
