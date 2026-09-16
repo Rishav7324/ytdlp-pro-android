@@ -1,0 +1,98 @@
+# One-time generator for the Zyvro upload keystore.
+# HOW TO USE (no local tooling needed):
+#   1. Push this file, then open Actions -> "Generate Zyvro Upload Key" -> Run workflow.
+#   2. Fill key alias + two passwords (store them in a password manager!).
+#   3. Download the `zyvro-upload-key` artifact, copy the 4 values from
+#      ADD-THESE-SECRETS.txt into repo Settings -> Secrets and variables -> Actions:
+#        ANDROID_KEYSTORE_BASE64 / ANDROID_STORE_PASSWORD /
+#        ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD
+#   4. Keep zyvro-release.keystore backed up offline, then DELETE this workflow
+#      run (and its artifact) so the private key no longer sits on GitHub.
+#   5. Re-run "Build Zyvro Release" - the release APK will be properly signed.
+# NEVER print passwords or the base64 blob to logs (this workflow avoids echo).
+
+name: Generate Zyvro Upload Key
+
+on:
+  workflow_dispatch:
+    inputs:
+      key_alias:
+        description: 'Key alias'
+        default: 'zyvro-upload'
+        required: true
+        type: string
+      store_password:
+        description: 'Keystore password (min 8 chars - SAVE it, unrecoverable!)'
+        required: true
+        type: string
+      key_password:
+        description: 'Key password (may equal keystore password - SAVE it!)'
+        required: true
+        type: string
+
+jobs:
+  gen:
+    name: Generate upload keystore
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK 21 (for keytool)
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: temurin
+
+      - name: Generate keystore (values never echoed)
+        env:
+          STORE_PW: ${{ inputs.store_password }}
+          KEY_PW: ${{ inputs.key_password }}
+          ALIAS: ${{ inputs.key_alias }}
+        run: |
+          set -e
+          keytool -genkeypair -storetype PKCS12 \
+            -keystore zyvro-release.keystore -alias "$ALIAS" \
+            -keyalg RSA -keysize 2048 -validity 9125 \
+            -dname "CN=Zyvro Upload, OU=Zyvro, O=Zyvro, C=IN" \
+            -storepass "$STORE_PW" -keypass "$KEY_PW"
+          echo "--- certificate (public info only, no secrets) ---"
+          keytool -list -v -keystore zyvro-release.keystore -alias "$ALIAS" \
+            -storepass "$STORE_PW" | grep -E "Alias name|Valid from|SHA256|Owner" || true
+          B64="$(base64 -w0 zyvro-release.keystore)"
+          {
+            echo "Copy each value into repo Settings -> Secrets and variables -> Actions."
+            echo "Do NOT commit this file anywhere."
+            echo ""
+            echo "ANDROID_KEYSTORE_BASE64="
+            echo "$B64"
+            echo ""
+            echo "ANDROID_STORE_PASSWORD="
+            echo "$STORE_PW"
+            echo ""
+            echo "ANDROID_KEY_ALIAS="
+            echo "$ALIAS"
+            echo ""
+            echo "ANDROID_KEY_PASSWORD="
+            echo "$KEY_PW"
+          } > ADD-THESE-SECRETS.txt
+          {
+            echo "ZYVRO UPLOAD KEY - BACKUP NOTES"
+            echo "================================"
+            echo "1. Keep zyvro-release.keystore in a SAFE offline place (USB drive + cloud)."
+            echo "   If lost, you cannot publish updates with the same signature."
+            echo "2. After adding the 4 secrets to GitHub, DELETE this workflow run"
+            echo "   (Actions -> this run -> ... -> Delete workflow run)."
+            echo "3. Enroll in Play App Signing when uploading to Play Console."
+            echo "4. Certificate fingerprints are printed in the workflow log for"
+            echo "   cross-checking in Play Console (those are public, safe to share)."
+          } > BACKUP-README.txt
+
+      - name: Upload key bundle (download immediately, then delete run)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zyvro-upload-key
+          path: |
+            zyvro-release.keystore
+            ADD-THESE-SECRETS.txt
+            BACKUP-README.txt
+          if-no-files-found: error
+          retention-days: 3
