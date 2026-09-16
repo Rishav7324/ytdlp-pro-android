@@ -4,12 +4,13 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -19,7 +20,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -27,9 +30,9 @@ import androidx.compose.ui.unit.sp
 import com.zyvro.app.ui.theme.IOSGray
 
 /**
- * Zyvro iOS-style tab bar.
- * Full-width translucent bar with a hairline top separator, SF-symbol-like
- * glyphs and 10pt semibold labels. Same API as before so navigation is untouched.
+ * Zyvro floating bottom navigation.
+ * Compact floating pill with small glyphs, soft shadow and hairline border.
+ * Same API as before so navigation is untouched.
  */
 @Composable
 fun LiquidGlassNavigationBar(
@@ -45,20 +48,23 @@ fun LiquidGlassNavigationBar(
         GlassNavItem("settings", "Settings", Icons.Rounded.Settings)
     )
 
-    // iOS tab bar follows the surface tint in both light and dark modes.
+    val shape = RoundedCornerShape(24.dp)
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        HorizontalDivider(
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
-        )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .shadow(12.dp, shape)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f), shape)
+            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.35f), shape)
+            .clip(shape)
+            .padding(vertical = 6.dp, horizontal = 4.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
-                .navigationBarsPadding()
-                .padding(top = 6.dp, bottom = 8.dp)
-                .height(52.dp),
+                .height(50.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -79,7 +85,6 @@ private fun RowScope.IOSTabButton(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    // Gentle iOS press feedback (no bouncy spring).
     val scale by animateFloatAsState(
         targetValue = if (selected) 1.04f else 1.0f,
         animationSpec = spring(stiffness = 600f, dampingRatio = 0.8f),
@@ -109,14 +114,14 @@ private fun RowScope.IOSTabButton(
             imageVector = item.icon,
             contentDescription = item.label,
             tint = tint,
-            modifier = Modifier.size(25.dp)
+            modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = item.label,
             color = tint,
             style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.sp,
+                fontSize = 9.5.sp,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             )
         )

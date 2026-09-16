@@ -54,7 +54,7 @@ import com.zyvro.app.player.AudioFxManager
 fun EqualizerDialog(
     onDismiss: () -> Unit
 ) {
-    var isEnabled by remember { mutableStateOf(true) }
+    var isEnabled by remember { mutableStateOf(AudioFxManager.instance.isEnabled) }
     var bassBoost by remember { mutableFloatStateOf(0.5f) }
     var virtualizer by remember { mutableFloatStateOf(0.3f) }
     var volumeGain by remember { mutableFloatStateOf(AudioFxManager.instance.volumeBoostMb / 1000f) }
@@ -82,7 +82,10 @@ fun EqualizerDialog(
                 }
                 Switch(
                     checked = isEnabled,
-                    onCheckedChange = { isEnabled = it }
+                    onCheckedChange = {
+                        isEnabled = it
+                        AudioFxManager.instance.setEnabled(it)
+                    }
                 )
             }
         },
@@ -93,6 +96,17 @@ fun EqualizerDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
+                // Live engine status (was silently dead on some devices before)
+                val fxLive = AudioFxManager.instance.hasActiveSession()
+                Text(
+                    text = if (!isEnabled) "Effects bypassed"
+                    else if (fxLive) "Effects live on this device"
+                    else "Effects unavailable on this device",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isEnabled && fxLive) Color(0xFF00E676)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 // Presets
                 Text("Sound Profile Presets", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

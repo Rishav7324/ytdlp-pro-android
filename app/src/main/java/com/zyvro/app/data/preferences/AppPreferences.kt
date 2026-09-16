@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -34,6 +35,7 @@ class AppPreferences(private val context: Context) {
         val KEY_ARIA2_CONNECTIONS = intPreferencesKey("aria2_connections")
         val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val KEY_ACCENT_COLOR = stringPreferencesKey("accent_color")
+        val KEY_DEVICE_FAVORITES = stringSetPreferencesKey("favorite_device_paths")
     }
 
     private val defaultDownloadDir: String
@@ -153,6 +155,19 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setAccentColor(accent: String) {
         context.dataStore.edit { it[KEY_ACCENT_COLOR] = accent }
+    }
+
+    /** Device (MediaStore) favorites by file path — Room only tracks downloads. */
+    val deviceFavorites: Flow<Set<String>> = context.dataStore.data.map { prefs ->
+        prefs[KEY_DEVICE_FAVORITES] ?: emptySet()
+    }
+
+    suspend fun toggleDeviceFavorite(path: String) {
+        context.dataStore.edit { prefs ->
+            val current = prefs[KEY_DEVICE_FAVORITES] ?: emptySet()
+            prefs[KEY_DEVICE_FAVORITES] =
+                if (current.contains(path)) current - path else current + path
+        }
     }
 
     /** NextPlayer-style resume position per media id (0 = unknown). */

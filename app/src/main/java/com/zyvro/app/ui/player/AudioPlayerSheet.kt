@@ -129,7 +129,9 @@ fun AudioPlayerSheet(onDismiss: () -> Unit) {
     // DB-backed items (id < 1M) support favorites/playlists; device scans are display-only.
     val isDbItem = item.id in 1 until 1_000_000
     val repository = remember { (context.applicationContext as YtDlpApp).repository }
-    var isFav by remember(item.id, item.isFavorite) { mutableStateOf(item.isFavorite) }
+    var isFavDb by remember(item.id, item.isFavorite) { mutableStateOf(item.isFavorite) }
+    val deviceFavs by repository.preferences.deviceFavorites.collectAsState(initial = emptySet())
+    val isFav = if (isDbItem) isFavDb else deviceFavs.contains(item.targetPath)
     val playlists by repository.playlists.collectAsState(initial = emptyList())
     val artScale by animateFloatAsState(if (playing) 1.0f else 0.94f, tween(300), label = "art-scale")
 
@@ -193,19 +195,25 @@ fun AudioPlayerSheet(onDismiss: () -> Unit) {
                             letterSpacing = 1.sp
                         )
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (isDbItem) {
-                                IconButton(onClick = {
-                                    scope.launch {
-                                        runCatching { repository.toggleFavorite(item.id) }
-                                        isFav = !isFav
+                            IconButton(onClick = {
+                                scope.launch {
+                                    runCatching {
+                                        if (isDbItem) {
+                                            repository.toggleFavorite(item.id)
+                                            isFavDb = !isFavDb
+                                        } else {
+                                            repository.preferences.toggleDeviceFavorite(item.targetPath)
+                                        }
                                     }
-                                }) {
+                                }
+                            }) {
                                     Icon(
                                         if (isFav) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                         "Favorite",
                                         tint = if (isFav) Color(0xFFE1306C) else NovaAqua
                                     )
                                 }
+                            if (isDbItem) {
                                 IconButton(onClick = { showPlaylistDialog = true }) {
                                     Icon(Icons.Default.PlaylistAdd, "Add to playlist", tint = NovaAqua)
                                 }

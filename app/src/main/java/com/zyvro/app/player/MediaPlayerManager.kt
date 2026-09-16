@@ -98,9 +98,12 @@ class MediaPlayerManager private constructor(context: Context) {
     private val _subtitlesEnabled = MutableStateFlow(true)
     val subtitlesEnabled: StateFlow<Boolean> = _subtitlesEnabled.asStateFlow()
 
-    // Playback errors surfaced to the UI instead of a stuck spinner
     private val _playerError = MutableStateFlow<String?>(null)
     val playerError: StateFlow<String?> = _playerError.asStateFlow()
+
+    // SFX availability surfaced to the equalizer UI
+    private val _fxActive = MutableStateFlow(false)
+    val fxActive: StateFlow<Boolean> = _fxActive.asStateFlow()
 
     private var progressJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.Main + Job())
@@ -116,8 +119,16 @@ class MediaPlayerManager private constructor(context: Context) {
                 if (state == Player.STATE_READY) {
                     _duration.value = player.duration.coerceAtLeast(0L)
                     AudioFxManager.instance.initAudioEffects(player.audioSessionId)
+                    _fxActive.value = AudioFxManager.instance.hasActiveSession()
                 } else if (state == Player.STATE_ENDED) {
                     playNext()
+                }
+            }
+
+            override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                if (audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+                    AudioFxManager.instance.initAudioEffects(audioSessionId)
+                    _fxActive.value = AudioFxManager.instance.hasActiveSession()
                 }
             }
 

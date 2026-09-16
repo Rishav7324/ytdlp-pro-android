@@ -16,9 +16,27 @@ class AudioFxManager private constructor() {
     var isEnabled: Boolean = true
         private set
 
+    /** Master toggle: enables/disables every unit in the chain. */
+    fun setEnabled(enabled: Boolean) {
+        isEnabled = enabled
+        try {
+            equalizer?.enabled = enabled
+            bassBoost?.enabled = enabled
+            virtualizer?.enabled = enabled
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                loudnessEnhancer?.enabled = enabled
+            }
+        } catch (e: Exception) {
+            Log.e("AudioFxManager", "setEnabled failed", e)
+        }
+    }
+
     /** Persisted volume-boost (millibels) re-applied on every new audio session. */
     var volumeBoostMb: Int = 0
         private set
+
+    /** True when the platform granted a live effect chain (false = SFX unavailable). */
+    fun hasActiveSession(): Boolean = equalizer != null
 
     fun initAudioEffects(audioSessionId: Int) {
         if (audioSessionId <= 0) return

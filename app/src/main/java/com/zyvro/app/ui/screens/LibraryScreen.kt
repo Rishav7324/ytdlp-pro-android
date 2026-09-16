@@ -60,6 +60,7 @@ fun LibraryScreen(
     val completedList by viewModel.completedDownloads.collectAsState()
     val currentFilter by viewModel.filter.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val deviceFavPaths by viewModel.deviceFavorites.collectAsState()
 
     var activeTab by remember { mutableIntStateOf(0) } // 0: Downloads, 1: Device Storage
     val localDeviceMedia = remember { mutableStateListOf<DownloadEntity>() }
@@ -412,7 +413,7 @@ fun LibraryScreen(
                 Icon(
                     Icons.Rounded.Videocam,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -429,7 +430,7 @@ fun LibraryScreen(
                 Icon(
                     Icons.Rounded.Audiotrack,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -446,7 +447,7 @@ fun LibraryScreen(
                 Icon(
                     Icons.Rounded.Favorite,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -463,7 +464,7 @@ fun LibraryScreen(
                 Icon(
                     Icons.Rounded.TrendingUp,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(12.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -539,13 +540,20 @@ fun LibraryScreen(
                 contentPadding = PaddingValues(bottom = 110.dp)
             ) {
                 items(displayList, key = { it.id }) { item ->
+                    val isDeviceTab = activeTab == 1
                     DownloadItemCard(
                         download = item,
                         onCancel = { },
                         onDelete = { id -> viewModel.deleteDownload(id) },
                         onPlay = { playerManager.playMedia(item) },
                         onShare = { shareMedia(context, item) },
-                        onToggleFavorite = { id -> viewModel.toggleFavorite(id) }
+                        onToggleFavorite = { _ ->
+                            if (isDeviceTab) viewModel.toggleDeviceFavorite(item.targetPath)
+                            else viewModel.toggleFavorite(item.id)
+                        },
+                        isFavoriteOverride = if (isDeviceTab) {
+                            deviceFavPaths.contains(item.targetPath)
+                        } else null
                     )
                 }
             }

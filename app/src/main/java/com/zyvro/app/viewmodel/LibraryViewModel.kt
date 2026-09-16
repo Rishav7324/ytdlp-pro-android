@@ -59,6 +59,14 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     val playlists = repository.playlists
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    private val prefs = (application as YtDlpApp).preferences
+    val deviceFavorites = prefs.deviceFavorites
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+
+    fun toggleDeviceFavorite(path: String) {
+        viewModelScope.launch { prefs.toggleDeviceFavorite(path) }
+    }
+
     fun toggleFavorite(id: Long) {
         viewModelScope.launch { repository.toggleFavorite(id) }
     }
