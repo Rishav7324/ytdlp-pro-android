@@ -3,6 +3,7 @@ package com.zyvro.app.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.media.MediaMetadataRetriever
 import android.os.IBinder
 import android.util.Log
 import com.zyvro.app.YtDlpApp
@@ -81,6 +82,7 @@ class DownloadService : Service() {
             val embedSubtitles = repository.preferences.embedSubtitles.first()
             val useAria2 = repository.preferences.useAria2.first()
             val customArgs = repository.preferences.customArguments.first()
+            val ytAndroidClient = repository.preferences.ytAndroidClient.first()
             val taskId = "download_${download.id}"
 
             val result = YtDlpEngine.executeDownload(
@@ -94,7 +96,8 @@ class DownloadService : Service() {
                 embedSubtitles = embedSubtitles,
                 useAria2 = useAria2,
                 customArgs = customArgs,
-                cookiesFile = cookiesFile
+                cookiesFile = cookiesFile,
+                ytAndroidClient = ytAndroidClient
             ) { progress, speed, eta, _ ->
                 val progressPercent = progress.toInt().coerceIn(0, 100)
                 serviceScope.launch {
@@ -134,6 +137,13 @@ class DownloadService : Service() {
                             title = download.title
                         )
                         repository.markCompleted(download.id, publicFile.absolutePath)
+                        // Requested-vs-actual proof: probe real video height into formatNote.
+                        runCatching {
+                            val actual = probeVideoHeight(publicFile)
+                            if (actual != null) {
+                                repository.updateFormatNote(download.id, "${actual}p")
+                            }
+                        }
                         NotificationHelper.showCompletedNotification(
                             this@DownloadService,
                             download.id.toInt(),
@@ -191,6 +201,20 @@ class DownloadService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /** Probes the real video height of a finished file (null for audio/unknown). */
+    private fun probeVideoHeight(file: File): Int? {
+        if (!file.exists()) return null
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(file.absolutePath)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+        } catch (_: Exception) {
+            null
+        } finally {
+            runCatching { retriever.release() }
+        }
+    }
 
     companion object {
         private const val TAG = "DownloadService"

@@ -52,6 +52,10 @@ class DownloadRepository(
         downloadDao.deleteById(id)
     }
 
+    suspend fun updateFormatNote(id: Long, note: String) {
+        downloadDao.updateFormatNote(id, note)
+    }
+
     suspend fun clearCompleted() {
         downloadDao.clearCompleted()
     }

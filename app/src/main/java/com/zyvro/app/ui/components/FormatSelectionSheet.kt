@@ -2,6 +2,7 @@ package com.zyvro.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import com.zyvro.app.ui.theme.LocalAppDark
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -53,6 +54,14 @@ fun FormatSelectionSheet(
     var selectedVideo by remember(qualities) { mutableStateOf(qualities.first().formatId) }
     var selectedAudio by remember { mutableStateOf("mp3") }
 
+    // HD availability check: YouTube without login caps at ~720p behind bot-checks.
+    val maxHeight = remember(videos) {
+        videos.mapNotNull { it.resolution.removeSuffix("p").toIntOrNull() }.maxOrNull() ?: 0
+    }
+    val needsLoginForHd = remember(videoInfo) {
+        videoInfo.extractor.contains("youtube", ignoreCase = true) && maxHeight in 1..720
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -79,6 +88,35 @@ fun FormatSelectionSheet(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            // Login nudge: only low formats visible = YouTube bot-check, needs cookies.
+            if (needsLoginForHd) {
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color(0xFFFF9F0A).copy(alpha = 0.14f),
+                        border = BorderStroke(1.dp, Color(0xFFFF9F0A).copy(alpha = 0.5f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Rounded.Key,
+                                contentDescription = null,
+                                tint = Color(0xFFFF9F0A),
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Only SD formats visible — YouTube limits HD without login. Import cookies.txt in Settings → YouTube Login.",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
 
             // Segmented Tabs: Video & Audio vs Audio Only

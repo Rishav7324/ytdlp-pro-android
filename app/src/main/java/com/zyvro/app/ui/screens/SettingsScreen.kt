@@ -34,6 +34,7 @@ import com.zyvro.app.ui.theme.NovaInk
 import com.zyvro.app.ui.theme.ZyvroAccents
 import com.zyvro.app.viewmodel.SettingsViewModel
 import com.zyvro.app.viewmodel.UpdateState
+import kotlinx.coroutines.launch
 
 /**
  * Zyvro Settings — iOS inset-grouped style.
@@ -56,7 +57,30 @@ fun SettingsScreen(
     val sponsorBlockEnabled by viewModel.sponsorBlockEnabled.collectAsState()
     val themeMode by viewModel.darkThemeMode.collectAsState()
     val accent by viewModel.accentColor.collectAsState()
+    val cookiesContent by viewModel.cookiesContent.collectAsState()
+    val ytAndroidClient by viewModel.ytAndroidClient.collectAsState()
     val systemDark = isSystemInDarkTheme()
+    val scope = rememberCoroutineScope()
+
+    // cookies.txt picker (Netscape format export from a desktop browser).
+    val pickCookies = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            val text = runCatching {
+                context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+            }.getOrNull()
+            if (text.isNullOrBlank()) {
+                Toast.makeText(context, "Could not read file", Toast.LENGTH_SHORT).show()
+            } else if (!text.contains("Netscape HTTP Cookie File") && !text.contains("youtube.com")) {
+                Toast.makeText(context, "Not a valid cookies.txt (needs youtube.com entries)", Toast.LENGTH_LONG).show()
+            } else {
+                viewModel.setCookiesContent(text)
+                Toast.makeText(context, "YouTube login imported — HD unlocked", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     var customArgsInput by remember { mutableStateOf("") }
     var initialized by remember { mutableStateOf(false) }
@@ -130,6 +154,55 @@ fun SettingsScreen(
                     Text("Check for engine update", fontWeight = FontWeight.SemiBold)
                 }
             }
+        }
+
+        // YOUTUBE LOGIN (unlocks 1080p+ behind YouTube bot-checks)
+        IOSSection(
+            header = "YOUTUBE LOGIN",
+            footer = "Export cookies.txt from a logged-in desktop browser (devtools extension). Never uploaded — stays on this device."
+        ) {
+            IOSValueRow(
+                icon = Icons.Rounded.Cookie,
+                title = "Login cookies",
+                value = if (cookiesContent.isBlank()) "Not set" else "${cookiesContent.lines().size} lines"
+            )
+            IOSDivider(startIndent = 58.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = { pickCookies.launch("text/plain") },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        if (cookiesContent.isBlank()) "Import cookies.txt" else "Replace cookies.txt",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                if (cookiesContent.isNotBlank()) {
+                    OutlinedButton(
+                        onClick = { viewModel.setCookiesContent("") },
+                        modifier = Modifier.height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Remove")
+                    }
+                }
+            }
+            IOSDivider(startIndent = 16.dp)
+            IOSSwitchRow(
+                icon = Icons.Rounded.Science,
+                title = "Android player client",
+                subtitle = "Experimental fallback for HD without login. May break age-gated videos.",
+                checked = ytAndroidClient,
+                onCheckedChange = { viewModel.setYtAndroidClient(it) }
+            )
         }
 
         // APPEARANCE (Retro-style themes + accents)

@@ -57,6 +57,9 @@ interface DownloadDao {
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun deleteById(id: Long)
 
+    @Query("UPDATE downloads SET formatNote = :note WHERE id = :id")
+    suspend fun updateFormatNote(id: Long, note: String)
+
     @Query("DELETE FROM downloads WHERE status = 'COMPLETED'")
     suspend fun clearCompleted()
 

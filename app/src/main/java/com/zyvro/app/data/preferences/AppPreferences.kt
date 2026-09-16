@@ -36,6 +36,7 @@ class AppPreferences(private val context: Context) {
         val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val KEY_ACCENT_COLOR = stringPreferencesKey("accent_color")
         val KEY_DEVICE_FAVORITES = stringSetPreferencesKey("favorite_device_paths")
+        val KEY_YT_ANDROID_CLIENT = booleanPreferencesKey("yt_android_client")
     }
 
     private val defaultDownloadDir: String
@@ -155,6 +156,15 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setAccentColor(accent: String) {
         context.dataStore.edit { it[KEY_ACCENT_COLOR] = accent }
+    }
+
+    /** Experimental YouTube android-client fallback (may unlock formats, may break age-gate). */
+    val ytAndroidClient: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[KEY_YT_ANDROID_CLIENT] ?: false
+    }
+
+    suspend fun setYtAndroidClient(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_YT_ANDROID_CLIENT] = enabled }
     }
 
     /** Device (MediaStore) favorites by file path — Room only tracks downloads. */

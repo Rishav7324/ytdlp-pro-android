@@ -112,7 +112,7 @@ object YtDlpEngine {
         DownloadFormat(id, format.ext.orEmpty().ifBlank { "media" }, if (audioOnly) "Audio" else "${height}p", listOfNotNull(format.vcodec, format.acodec).filter { it.isNotBlank() }.joinToString(" • ").ifBlank { "Available stream" }, audioOnly, 0L, (format.fps as? Number)?.toInt(), format.vcodec, format.acodec)
     }.distinctBy { it.formatId }.sortedWith(compareByDescending<DownloadFormat> { !it.isAudioOnly }.thenByDescending { it.resolution.removeSuffix("p").toIntOrNull() ?: 0 })
 
-    suspend fun executeDownload(context: Context, taskId: String, url: String, outputDir: File, mediaType: MediaType, formatId: String, audioExtension: String = "mp3", embedThumbnail: Boolean = true, embedSubtitles: Boolean = false, useAria2: Boolean = false, customArgs: String = "", cookiesFile: File? = null, onProgress: (Float, String, String, String) -> Unit): Result<File> = withContext(Dispatchers.IO) {
+    suspend fun executeDownload(context: Context, taskId: String, url: String, outputDir: File, mediaType: MediaType, formatId: String, audioExtension: String = "mp3", embedThumbnail: Boolean = true, embedSubtitles: Boolean = false, useAria2: Boolean = false, customArgs: String = "", cookiesFile: File? = null, ytAndroidClient: Boolean = false, onProgress: (Float, String, String, String) -> Unit): Result<File> = withContext(Dispatchers.IO) {
         runCatching {
             ensureInitialized(context).getOrThrow()
             val validDir = outputDir.takeIf { it.exists() || it.mkdirs() } ?: context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir
@@ -126,9 +126,22 @@ object YtDlpEngine {
                 request.addOption("-f", "ba/b"); request.addOption("-x"); request.addOption("--audio-format", audioExtension); request.addOption("--audio-quality", "0"); request.addOption("--add-metadata")
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
             } else {
-                val selected = formatId.ifBlank { "bv*[height<=1080]+ba/b[height<=1080]/best" }
-                request.addOption("-f", if (selected.contains("+") || selected.contains("/") || selected.contains("[")) selected else "$selected+ba/b")
+                // Smart merged selector: prefer mp4/m4a pairs at/below 1080p so the
+                // result matches the picked quality instead of a low progressive file.
+                val selected = when {
+                    formatId.isBlank() -> "bv*[height<=1080]+ba/b[height<=1080]/best"
+                    formatId == "bestvideo+bestaudio/best" ->
+                        "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/bv*[height<=1080]+ba/b[height<=1080]/best"
+                    formatId.contains("+") || formatId.contains("/") || formatId.contains("[") -> formatId
+                    else -> "$formatId+ba/b"
+                }
+                request.addOption("-f", selected)
                 request.addOption("--merge-output-format", "mp4")
+                if (ytAndroidClient) {
+                    // Experimental: android player client can unlock formats behind
+                    // bot-checks (may break age-gated videos) — behind a setting.
+                    request.addOption("--extractor-args", "youtube:player_client=android")
+                }
                 if (embedThumbnail) request.addOption("--embed-thumbnail")
                 if (embedSubtitles) request.addOption("--embed-subs")
             }

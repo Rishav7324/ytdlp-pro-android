@@ -178,6 +178,16 @@ fun DownloadItemCard(
                                 color = AccentGreen,
                                 fontWeight = FontWeight.Bold
                             )
+                            // Requested-vs-actual proof: probed height stored as "1080p".
+                            val actualRes = download.formatNote.takeIf { it.matches(Regex("\\d+p")) }
+                            if (actualRes != null) {
+                                Text(
+                                    text = " • $actualRes",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                             if (download.fileSize > 0) {
                                 Text(
                                     text = " • ${download.formattedFileSize()}",
