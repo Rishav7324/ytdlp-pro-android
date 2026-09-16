@@ -256,7 +256,7 @@ fun PermissionScreen(
                             Icon(
                                 imageVector = item.icon,
                                 contentDescription = item.title,
-                                tint = if (isGranted) NovaAqua else Color.White,
+                                tint = if (isGranted) NovaAqua else MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -268,13 +268,13 @@ fun PermissionScreen(
                                 text = item.title,
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(3.dp))
                             Text(
                                 text = item.description,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White.copy(alpha = 0.65f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 15.sp
                             )
                         }
