@@ -8,9 +8,11 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -385,8 +387,11 @@ fun LibraryScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Category Filter Pills
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        // Category Filter Pills (Retro-style: All / Videos / Audio / Favorites / Top)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             LiquidGlassPill(
                 isSelected = currentFilter == LibraryFilter.ALL,
                 onClick = { viewModel.setFilter(LibraryFilter.ALL) }
@@ -427,6 +432,40 @@ fun LibraryScreen(
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "Audio",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            LiquidGlassPill(
+                isSelected = currentFilter == LibraryFilter.FAVORITES,
+                onClick = { viewModel.setFilter(LibraryFilter.FAVORITES) }
+            ) {
+                Icon(
+                    Icons.Rounded.Favorite,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Favorites",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            LiquidGlassPill(
+                isSelected = currentFilter == LibraryFilter.TOP,
+                onClick = { viewModel.setFilter(LibraryFilter.TOP) }
+            ) {
+                Icon(
+                    Icons.Rounded.TrendingUp,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Top Played",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -503,7 +542,8 @@ fun LibraryScreen(
                         onCancel = { },
                         onDelete = { id -> viewModel.deleteDownload(id) },
                         onPlay = { playerManager.playMedia(item) },
-                        onShare = { shareMedia(context, item) }
+                        onShare = { shareMedia(context, item) },
+                        onToggleFavorite = { id -> viewModel.toggleFavorite(id) }
                     )
                 }
             }

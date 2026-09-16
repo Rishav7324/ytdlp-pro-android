@@ -16,17 +16,66 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(primary = NovaPrimaryDark, onPrimary = IOSGroupedDark, primaryContainer = Color(0xFF234344), onPrimaryContainer = IOSTitleDark, secondary = NovaSecondary, onSecondary = IOSGroupedDark, tertiary = NovaAqua, background = IOSGroupedDark, onBackground = IOSTitleDark, surface = IOSCardDark, onSurface = IOSTitleDark, surfaceVariant = IOSCardDarkElevated, onSurfaceVariant = IOSCaptionDark, outline = IOSSeparatorDark)
+/** Retro-style accent choices. TEAL matches the Zyvro icon. */
+object ZyvroAccents {
+    const val TEAL = "TEAL"
+    const val BLUE = "BLUE"
+    const val PURPLE = "PURPLE"
+    const val GREEN = "GREEN"
+    const val ORANGE = "ORANGE"
+    const val PINK = "PINK"
 
-private val LightColorScheme = lightColorScheme(primary = NovaAquaDeep, onPrimary = Color.White, primaryContainer = NovaAquaSoft, onPrimaryContainer = NovaInk, secondary = NovaAquaSoft, onSecondary = NovaInk, tertiary = NovaAqua, background = IOSGroupedLight, onBackground = IOSTitleLight, surface = IOSCardLight, onSurface = IOSTitleLight, surfaceVariant = IOSGroupedLight, onSurfaceVariant = IOSCaptionLight, outline = IOSSeparatorLight)
+    val all = listOf(TEAL, BLUE, PURPLE, GREEN, ORANGE, PINK)
+
+    /** Primary swatch per accent: light + dark variants. */
+    fun primary(accent: String, dark: Boolean): Color = when (accent.uppercase()) {
+        BLUE -> if (dark) Color(0xFF0A84FF) else Color(0xFF007AFF)
+        PURPLE -> if (dark) Color(0xFFA78BFA) else Color(0xFF7C3AED)
+        GREEN -> if (dark) Color(0xFF30D158) else Color(0xFF16A34A)
+        ORANGE -> if (dark) Color(0xFFFF9F0A) else Color(0xFFEA580C)
+        PINK -> if (dark) Color(0xFFF472B6) else Color(0xFFDB2777)
+        else -> if (dark) NovaPrimaryDark else NovaAquaDeep // TEAL
+    }
+}
+
+private fun zyvroLightScheme(accent: Color) = lightColorScheme(
+    primary = accent, onPrimary = Color.White,
+    primaryContainer = NovaAquaSoft, onPrimaryContainer = NovaInk,
+    secondary = NovaAquaSoft, onSecondary = NovaInk, tertiary = NovaAqua,
+    background = IOSGroupedLight, onBackground = IOSTitleLight,
+    surface = IOSCardLight, onSurface = IOSTitleLight,
+    surfaceVariant = IOSGroupedLight, onSurfaceVariant = IOSCaptionLight,
+    outline = IOSSeparatorLight
+)
+
+private fun zyvroDarkScheme(accent: Color, amoled: Boolean) = darkColorScheme(
+    primary = accent, onPrimary = Color.Black,
+    primaryContainer = Color(0xFF234344), onPrimaryContainer = IOSTitleDark,
+    secondary = NovaSecondary, onSecondary = Color.Black, tertiary = NovaAqua,
+    background = if (amoled) Color.Black else IOSGroupedDark,
+    onBackground = IOSTitleDark,
+    surface = if (amoled) Color(0xFF0A0A0A) else IOSCardDark,
+    onSurface = IOSTitleDark,
+    surfaceVariant = if (amoled) Color(0xFF161616) else IOSCardDarkElevated,
+    onSurfaceVariant = IOSCaptionDark,
+    outline = IOSSeparatorDark
+)
 
 @Composable
-fun YtDlpTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean = false, content: @Composable () -> Unit) {
+fun YtDlpTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    amoled: Boolean = false,
+    accent: String = ZyvroAccents.TEAL,
+    dynamicColor: Boolean = false,
+    content: @Composable () -> Unit
+) {
     val context = LocalContext.current
+    val accentColor = ZyvroAccents.primary(accent, darkTheme)
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        darkTheme -> zyvroDarkScheme(accentColor, amoled)
+        else -> zyvroLightScheme(accentColor)
     }
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -41,3 +90,12 @@ fun YtDlpTheme(darkTheme: Boolean = isSystemInDarkTheme(), dynamicColor: Boolean
     }
     MaterialTheme(colorScheme = colorScheme, typography = Typography, shapes = NovaShapes, content = content)
 }
+
+/** Resolve stored theme mode (SYSTEM/LIGHT/DARK/BLACK) to (dark, amoled). */
+fun resolveThemeMode(mode: String, systemDark: Boolean): Pair<Boolean, Boolean> =
+    when (mode.uppercase()) {
+        "LIGHT" -> false to false
+        "DARK" -> true to false
+        "BLACK" -> true to true
+        else -> systemDark to false
+    }

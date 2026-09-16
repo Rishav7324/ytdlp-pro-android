@@ -31,6 +31,7 @@ class AppPreferences(private val context: Context) {
         val KEY_SPONSOR_BLOCK_ENABLED = booleanPreferencesKey("sponsor_block_enabled")
         val KEY_ARIA2_CONNECTIONS = intPreferencesKey("aria2_connections")
         val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        val KEY_ACCENT_COLOR = stringPreferencesKey("accent_color")
     }
 
     private val defaultDownloadDir: String
@@ -141,5 +142,14 @@ class AppPreferences(private val context: Context) {
 
     suspend fun setOnboardingCompleted(completed: Boolean = true) {
         context.dataStore.edit { it[KEY_ONBOARDING_COMPLETED] = completed }
+    }
+
+    /** Accent name: TEAL, BLUE, PURPLE, GREEN, ORANGE, PINK. */
+    val accentColor: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[KEY_ACCENT_COLOR] ?: "TEAL"
+    }
+
+    suspend fun setAccentColor(accent: String) {
+        context.dataStore.edit { it[KEY_ACCENT_COLOR] = accent }
     }
 }

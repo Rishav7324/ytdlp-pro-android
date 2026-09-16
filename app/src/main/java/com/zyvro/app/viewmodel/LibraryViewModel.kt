@@ -17,7 +17,9 @@ import java.io.File
 enum class LibraryFilter {
     ALL,
     VIDEOS,
-    AUDIO
+    AUDIO,
+    FAVORITES,
+    TOP
 }
 
 class LibraryViewModel(application: Application) : AndroidViewModel(application) {
@@ -40,11 +42,39 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 LibraryFilter.ALL -> true
                 LibraryFilter.VIDEOS -> item.mediaType == MediaType.VIDEO
                 LibraryFilter.AUDIO -> item.mediaType == MediaType.AUDIO
+                LibraryFilter.FAVORITES -> item.isFavorite
+                LibraryFilter.TOP -> item.playCount > 0
             }
             val matchesQuery = query.isBlank() || item.title.contains(query, ignoreCase = true) || item.uploader.contains(query, ignoreCase = true)
             matchesFilter && matchesQuery
+        }.let { list ->
+            if (filter == LibraryFilter.TOP) list.sortedByDescending { it.playCount } else list
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val favoritesCount: StateFlow<Int> = repository.favorites
+        .combine(kotlinx.coroutines.flow.flowOf(Unit)) { list, _ -> list.size }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val playlists = repository.playlists
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun toggleFavorite(id: Long) {
+        viewModelScope.launch { repository.toggleFavorite(id) }
+    }
+
+    fun createPlaylist(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch { repository.createPlaylist(name) }
+    }
+
+    fun deletePlaylist(id: Long) {
+        viewModelScope.launch { repository.deletePlaylist(id) }
+    }
+
+    fun addToPlaylist(playlistId: Long, downloadId: Long) {
+        viewModelScope.launch { repository.addSongToPlaylist(playlistId, downloadId) }
+    }
 
     fun setFilter(filter: LibraryFilter) {
         _filter.value = filter

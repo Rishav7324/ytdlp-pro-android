@@ -2,7 +2,9 @@ package com.zyvro.app.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +31,7 @@ import com.zyvro.app.ui.components.ambientLiquidBackground
 import com.zyvro.app.ui.theme.NovaAqua
 import com.zyvro.app.ui.theme.NovaAquaDeep
 import com.zyvro.app.ui.theme.NovaInk
+import com.zyvro.app.ui.theme.ZyvroAccents
 import com.zyvro.app.viewmodel.SettingsViewModel
 import com.zyvro.app.viewmodel.UpdateState
 
@@ -51,6 +54,9 @@ fun SettingsScreen(
     val useAria2 by viewModel.useAria2.collectAsState()
     val aria2Connections by viewModel.aria2Connections.collectAsState()
     val sponsorBlockEnabled by viewModel.sponsorBlockEnabled.collectAsState()
+    val themeMode by viewModel.darkThemeMode.collectAsState()
+    val accent by viewModel.accentColor.collectAsState()
+    val systemDark = isSystemInDarkTheme()
 
     var customArgsInput by remember { mutableStateOf("") }
     var initialized by remember { mutableStateOf(false) }
@@ -124,6 +130,66 @@ fun SettingsScreen(
                     Text("Check for engine update", fontWeight = FontWeight.SemiBold)
                 }
             }
+        }
+
+        // APPEARANCE (Retro-style themes + accents)
+        IOSSection(header = "APPEARANCE", footer = "Black saves battery on AMOLED screens.") {
+            Text(
+                text = "Theme",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val modes = listOf("SYSTEM", "LIGHT", "DARK", "BLACK")
+                modes.forEach { mode ->
+                    FilterChip(
+                        selected = themeMode.uppercase() == mode,
+                        onClick = { viewModel.setDarkThemeMode(mode) },
+                        label = {
+                            Text(
+                                mode.lowercase().replaceFirstChar { it.uppercase() },
+                                fontWeight = if (themeMode.uppercase() == mode) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            IOSDivider(startIndent = 16.dp)
+            Text(
+                text = "Accent color",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, top = 12.dp, bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ZyvroAccents.all.forEach { name ->
+                    val selected = accent.uppercase() == name
+                    Box(
+                        modifier = Modifier
+                            .size(if (selected) 40.dp else 34.dp)
+                            .clip(CircleShape)
+                            .background(ZyvroAccents.primary(name, systemDark))
+                            .border(
+                                width = if (selected) 3.dp else 1.dp,
+                                color = if (selected) MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                shape = CircleShape
+                            )
+                            .clickable { viewModel.setAccentColor(name) }
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
         }
 
         // DOWNLOADS

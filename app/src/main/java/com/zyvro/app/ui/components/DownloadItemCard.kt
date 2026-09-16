@@ -46,6 +46,7 @@ fun DownloadItemCard(
     onDelete: (Long) -> Unit,
     onPlay: ((DownloadEntity) -> Unit)? = null,
     onShare: ((DownloadEntity) -> Unit)? = null,
+    onToggleFavorite: ((Long) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val isDark = isSystemInDarkTheme()
@@ -275,6 +276,22 @@ fun DownloadItemCard(
                                 Icons.Rounded.Share,
                                 contentDescription = "Share",
                                 tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                    if (onToggleFavorite != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = { onToggleFavorite(download.id) },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .liquidGlass(shape = CircleShape, elevation = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (download.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                contentDescription = "Favorite",
+                                tint = if (download.isFavorite) AccentRed else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(18.dp)
                             )
                         }

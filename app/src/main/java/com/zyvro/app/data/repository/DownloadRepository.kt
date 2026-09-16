@@ -4,6 +4,8 @@ import com.zyvro.app.data.local.DownloadDao
 import com.zyvro.app.data.local.DownloadEntity
 import com.zyvro.app.data.local.DownloadStatus
 import com.zyvro.app.data.local.MediaType
+import com.zyvro.app.data.local.PlaylistEntity
+import com.zyvro.app.data.local.PlaylistSong
 import com.zyvro.app.data.preferences.AppPreferences
 import kotlinx.coroutines.flow.Flow
 
@@ -53,4 +55,46 @@ class DownloadRepository(
     suspend fun clearCompleted() {
         downloadDao.clearCompleted()
     }
+
+    // ---- Play stats, favorites & playlists ----
+
+    suspend fun recordPlay(id: Long) {
+        downloadDao.recordPlay(id)
+    }
+
+    suspend fun toggleFavorite(id: Long) {
+        downloadDao.toggleFavorite(id)
+    }
+
+    val favorites: Flow<List<DownloadEntity>> = downloadDao.getFavorites()
+
+    fun getTopPlayed(limit: Int = 25): Flow<List<DownloadEntity>> =
+        downloadDao.getTopPlayed(limit)
+
+    fun getRecentlyPlayed(limit: Int = 25): Flow<List<DownloadEntity>> =
+        downloadDao.getRecentlyPlayed(limit)
+
+    suspend fun createPlaylist(name: String): Long =
+        downloadDao.insertPlaylist(PlaylistEntity(name = name.trim()))
+
+    val playlists: Flow<List<PlaylistEntity>> = downloadDao.getPlaylists()
+
+    suspend fun deletePlaylist(id: Long) {
+        downloadDao.clearPlaylistSongs(id)
+        downloadDao.deletePlaylist(id)
+    }
+
+    suspend fun addSongToPlaylist(playlistId: Long, downloadId: Long) {
+        if (downloadDao.isSongInPlaylist(playlistId, downloadId) == 0) {
+            val pos = downloadDao.nextPlaylistPosition(playlistId)
+            downloadDao.addSongToPlaylist(PlaylistSong(playlistId, downloadId, pos))
+        }
+    }
+
+    suspend fun removeSongFromPlaylist(playlistId: Long, downloadId: Long) {
+        downloadDao.removeSongFromPlaylist(playlistId, downloadId)
+    }
+
+    fun getPlaylistSongs(playlistId: Long): Flow<List<DownloadEntity>> =
+        downloadDao.getPlaylistSongs(playlistId)
 }

@@ -15,6 +15,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import com.zyvro.app.YtDlpApp
 import com.zyvro.app.data.local.DownloadEntity
 import com.zyvro.app.data.local.MediaType
 import kotlinx.coroutines.CoroutineScope
@@ -267,6 +268,10 @@ class MediaPlayerManager private constructor(context: Context) {
         }
 
         _currentMedia.value = entity
+        // Retro-style smart stats: no-op for non-DB (device) items.
+        scope.launch {
+            runCatching { YtDlpApp.instance.repository.recordPlay(entity.id) }
+        }
         if (playlist.isNotEmpty()) {
             _queue.value = playlist
         } else if (!_queue.value.contains(entity)) {
@@ -350,6 +355,15 @@ class MediaPlayerManager private constructor(context: Context) {
         if (_isShuffleEnabled.value) {
             _queue.value = _queue.value.shuffled()
         }
+    }
+
+    /** Retro-style manual queue reorder (drag-equivalent via up/down controls). */
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        val q = _queue.value.toMutableList()
+        if (fromIndex !in q.indices || toIndex !in q.indices || fromIndex == toIndex) return
+        val moved = q.removeAt(fromIndex)
+        q.add(toIndex, moved)
+        _queue.value = q
     }
 
     fun pause() {

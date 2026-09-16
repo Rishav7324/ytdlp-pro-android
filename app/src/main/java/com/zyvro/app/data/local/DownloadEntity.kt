@@ -38,7 +38,30 @@ data class DownloadEntity(
     val status: DownloadStatus = DownloadStatus.QUEUED,
     val errorMessage: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
-    val completedAt: Long? = null
+    val completedAt: Long? = null,
+    // Retro-style music stats
+    val playCount: Long = 0,
+    val lastPlayedAt: Long? = null,
+    val isFavorite: Boolean = false
+)
+
+@Entity(tableName = "playlists")
+data class PlaylistEntity(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val name: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Entity(
+    tableName = "playlist_songs",
+    primaryKeys = ["playlistId", "downloadId"]
+)
+data class PlaylistSong(
+    val playlistId: Long,
+    val downloadId: Long,
+    val position: Int = 0,
+    val addedAt: Long = System.currentTimeMillis()
 )
 
 val DownloadEntity.fileSize: Long

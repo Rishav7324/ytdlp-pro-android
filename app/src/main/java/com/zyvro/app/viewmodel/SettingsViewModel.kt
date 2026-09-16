@@ -32,6 +32,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val cookiesContent = preferences.cookiesContent.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
     val sponsorBlockEnabled = preferences.sponsorBlockEnabled.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val aria2Connections = preferences.aria2Connections.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 8)
+    val accentColor = preferences.accentColor.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "TEAL")
 
     private val _engineVersion = MutableStateFlow("Loading...")
     val engineVersion: StateFlow<String> = _engineVersion.asStateFlow()
@@ -74,4 +75,5 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setCookiesContent(cookies: String) = viewModelScope.launch { preferences.setCookiesContent(cookies) }
     fun setSponsorBlockEnabled(enabled: Boolean) = viewModelScope.launch { preferences.setSponsorBlockEnabled(enabled) }
     fun setAria2Connections(count: Int) = viewModelScope.launch { preferences.setAria2Connections(count) }
+    fun setAccentColor(accent: String) = viewModelScope.launch { preferences.setAccentColor(accent) }
 }
